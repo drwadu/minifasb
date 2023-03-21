@@ -79,16 +79,19 @@ impl Navigator {
 
     fn assume(&mut self, disjunctive: bool) -> Result<()> {
         if disjunctive {
-            let lp = format!(
-                "{}\n:- {}.",
-                self.input.0,
-                self.route
-                    .0
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<_>>()
-                    .join(",") // TODO: mäh
-            );
+            let lp = match self.route.0.is_empty() {
+                true => self.input.0.clone(),
+                _ => format!(
+                    "{}\n:- {}.",
+                    self.input.0,
+                    self.route
+                        .0
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",") // TODO: mäh
+                ),
+            };
 
             let mut ctl = clingo::control(self.input.1.clone())?;
             ctl.add("base", &[], &lp)?;
