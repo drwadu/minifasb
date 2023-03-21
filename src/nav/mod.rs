@@ -93,9 +93,13 @@ impl Navigator {
             self.ctl
                 .add("or", &[], &or_constraint)
                 .map_err(|e| errors::NavigatorError::Clingo(e))?;
+
             return self
                 .ctl
-                .ground(&[clingo::Part::new("or", vec![])?])
+                .ground(&[
+                    clingo::Part::new("base", vec![])?,
+                    clingo::Part::new("or", vec![])?,
+                ])
                 .map_err(|e| errors::NavigatorError::Clingo(e));
         }
 
