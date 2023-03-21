@@ -78,10 +78,6 @@ impl Navigator {
     }
 
     fn assume(&mut self, disjunctive: bool) -> Result<()> {
-        self.ctl
-            .backend()
-            .and_then(|mut b| b.assume(&self.route.1))
-            .map_err(|e| errors::NavigatorError::Clingo(e))?;
         if disjunctive {
             let lp = format!(
                 "{}\n:- {}.",
@@ -93,7 +89,7 @@ impl Navigator {
                     .collect::<Vec<_>>()
                     .join(",") // TODO: mäh
             );
-            dbg!(&lp);
+
             let mut ctl = clingo::control(self.input.1.clone())?;
             ctl.add("base", &[], &lp)?;
             ctl.ground(&[clingo::Part::new("base", vec![])?])?;
@@ -102,50 +98,14 @@ impl Navigator {
             for atom in ctl.symbolic_atoms()?.iter()? {
                 literals.insert(atom.symbol()?, atom.literal()?);
             }
+
             self.ctl = ctl;
-
-            /*
-            let or_constraint = format!(
-                ":- {}.",
-                self.route
-                    .0
-                    .iter()
-                    .map(|s| s.to_string())
-                    .collect::<Vec<_>>()
-                    .join(",") // TODO: mäh
-            );
-            dbg!(&or_constraint);
-            self.ctl
-                .add("or", &[], &or_constraint)
-                .map_err(|e| errors::NavigatorError::Clingo(e))?;
-
-            return self
-                .ctl
-                .ground(&[
-                    //clingo::Part::new("base", vec![])?,
-                    clingo::Part::new("or", vec![])?,
-                ])
-                .map_err(|e| errors::NavigatorError::Clingo(e));
-
-            let body = self
-                .route
-                .0
-                .iter()
-                .map(|f| match f.starts_with("not ") {
-                    true => self
-                        .literals
-                        .get(&parse(&f[4..]).unwrap())
-                        .unwrap()
-                        .negate(),
-                    _ => *self.literals.get(&parse(f).unwrap()).unwrap(),
-                })
-                .collect::<Vec<_>>();
-
-            self.ctl.backend()?.rule(false, &[], &body)?
-            */
         }
 
-        Ok(())
+        self.ctl
+            .backend()
+            .and_then(|mut b| b.assume(&self.route.1))
+            .map_err(|e| errors::NavigatorError::Clingo(e))
     }
 
     pub fn clear(&mut self) -> Result<()> {
