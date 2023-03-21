@@ -345,6 +345,9 @@ impl FacetedNavigation for Navigator {
                     })
                     .ok()?;
 
+                dbg!(bcs.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+                dbg!(ccs.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+
                 Some(bcs.difference_as_set(&ccs))
             }
         }

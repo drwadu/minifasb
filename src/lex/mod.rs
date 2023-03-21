@@ -9,3 +9,7 @@ pub fn parse(exp: &str) -> Option<Symbol> {
         }
     }
 }
+
+pub fn repr(exp: Symbol) -> String {
+    exp.to_string()
+}
