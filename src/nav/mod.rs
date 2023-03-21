@@ -96,6 +96,7 @@ impl Navigator {
                 ),
             };
 
+            dbg!(&lp);
             let mut ctl = clingo::control(self.input.1.clone())?;
             ctl.add("base", &[], &lp)?;
             ctl.ground(&[clingo::Part::new("base", vec![])?])?;
@@ -108,7 +109,6 @@ impl Navigator {
             self.ctl = ctl;
         }
 
-        dbg!(&self.input.0);
         self.ctl
             .backend()
             .and_then(|mut b| b.assume(&self.route.1))
