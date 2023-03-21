@@ -83,6 +83,22 @@ impl Navigator {
             .and_then(|mut b| b.assume(&self.route.1))
             .map_err(|e| errors::NavigatorError::Clingo(e))?;
         if disjunctive {
+            let lp = format!(
+                "{}\n:- {}.",
+                self.source,
+                self.route
+                    .0
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",") // TODO: mäh
+            );
+            dbg!(&lp);
+
+            self.ctl.add("base", &[], &lp)?;
+            self.ctl.ground(&[clingo::Part::new("base", vec![])?])?;
+
+            /*
             let or_constraint = format!(
                 ":- {}.",
                 self.route
@@ -105,7 +121,6 @@ impl Navigator {
                 ])
                 .map_err(|e| errors::NavigatorError::Clingo(e));
 
-            /*
             let body = self
                 .route
                 .0
