@@ -128,7 +128,7 @@ impl Navigator {
                 _ => println!("invalid input ..."),
             });
 
-        self.assume(true)
+        self.assume(!self.route.1.is_empty())
     }
 
     /// Activates disjunctive route `delta`.
@@ -142,7 +142,7 @@ impl Navigator {
             };
         });
 
-        Ok(())
+        self.assume(true)
     }
 
     /// Enumerates `n` answer sets within sub-space encoded by current route.
