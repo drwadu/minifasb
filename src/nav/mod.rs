@@ -18,6 +18,8 @@ pub struct Navigator {
     facets: HashSet<Symbol>,
     /// Literals.
     literals: HashMap<Symbol, SolverLiteral>,
+    /// Input program.
+    source: String,
 }
 impl Navigator {
     /// Constructs `Navigator`.
@@ -38,6 +40,7 @@ impl Navigator {
             route: (vec![], vec![]),
             facets: HashSet::default(),
             literals,
+            source: lp,
         })
     }
 
@@ -80,6 +83,7 @@ impl Navigator {
             .and_then(|mut b| b.assume(&self.route.1))
             .map_err(|e| errors::NavigatorError::Clingo(e))?;
         if disjunctive {
+            /*
             let or_constraint = format!(
                 ":- {}.",
                 self.route
@@ -98,9 +102,29 @@ impl Navigator {
                 .ctl
                 .ground(&[
                     clingo::Part::new("base", vec![])?,
-                    clingo::Part::new("or", vec![])?,
+                    clingo::Part::new("#program or..", vec![])?,
                 ])
                 .map_err(|e| errors::NavigatorError::Clingo(e));
+            */
+            // add rule: :- not d, c.
+            //let head = vec![];
+            //let body = vec![Literal::from(atom_d).negate(), atom_ids[2]];
+
+            let body = self
+                .route
+                .0
+                .iter()
+                .map(|f| match f.starts_with("not ") {
+                    true => self
+                        .literals
+                        .get(&parse(&f[4..]).unwrap())
+                        .unwrap()
+                        .negate(),
+                    _ => *self.literals.get(&parse(f).unwrap()).unwrap(),
+                })
+                .collect::<Vec<_>>();
+
+            self.ctl.backend()?.rule(false, &[], &body)?
         }
 
         Ok(())
