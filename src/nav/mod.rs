@@ -54,7 +54,7 @@ impl Navigator {
             .0
             .iter()
             .for_each(|f| match f.starts_with("not ") {
-                true => print!("{} ", &f[4..]),
+                true => print!("~{} ", &f[4..]),
                 _ => print!("{} ", f),
             });
         print!("& ");
