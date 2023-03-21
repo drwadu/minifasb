@@ -18,13 +18,13 @@ pub struct Navigator {
     facets: HashSet<Symbol>,
     /// Literals.
     literals: HashMap<Symbol, SolverLiteral>,
-    /// Input program.
-    source: String,
+    /// Input program and args.
+    input: (String, Vec<String>),
 }
 impl Navigator {
     /// Constructs `Navigator`.
     pub fn new(source: impl Into<String>, args: Vec<String>) -> Result<Self> {
-        let mut ctl = clingo::control(args)?;
+        let mut ctl = clingo::control(args.clone())?;
 
         let lp = source.into();
         ctl.add("base", &[], &lp)?;
@@ -40,7 +40,7 @@ impl Navigator {
             route: (vec![], vec![]),
             facets: HashSet::default(),
             literals,
-            source: lp,
+            input: (lp, args),
         })
     }
 
@@ -85,7 +85,7 @@ impl Navigator {
         if disjunctive {
             let lp = format!(
                 "{}\n:- {}.",
-                self.source,
+                self.input.0,
                 self.route
                     .0
                     .iter()
@@ -94,9 +94,15 @@ impl Navigator {
                     .join(",") // TODO: mäh
             );
             dbg!(&lp);
+            let mut ctl = clingo::control(self.input.1.clone())?;
+            ctl.add("base", &[], &lp)?;
+            ctl.ground(&[clingo::Part::new("base", vec![])?])?;
 
-            self.ctl.add("base", &[], &lp)?;
-            self.ctl.ground(&[clingo::Part::new("base", vec![])?])?;
+            let mut literals = HashMap::new();
+            for atom in ctl.symbolic_atoms()?.iter()? {
+                literals.insert(atom.symbol()?, atom.literal()?);
+            }
+            self.ctl = ctl;
 
             /*
             let or_constraint = format!(
