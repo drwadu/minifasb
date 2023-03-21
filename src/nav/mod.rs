@@ -89,6 +89,7 @@ impl Navigator {
                     .collect::<Vec<_>>()
                     .join(",") // TODO: mäh
             );
+            dbg!(&or_constraint);
             self.ctl
                 .add("or", &[], &or_constraint)
                 .map_err(|e| errors::NavigatorError::Clingo(e))?;
