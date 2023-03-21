@@ -43,10 +43,9 @@ impl Navigator {
 
     /// Parses facet.
     pub fn parse_facet(&self, exp: &str) -> Option<Symbol> {
-        Atom(&exp).parse(&['~'])
+        parse(exp)
     }
 
-    /// Makes assumptions according to specified route.
     fn assume(&mut self, disjunctive: bool) -> Result<()> {
         self.ctl
             .backend()
@@ -86,12 +85,10 @@ impl Navigator {
             .map(|f| {
                 let s = f.to_string();
                 match s.starts_with("~") {
-                    true => Atom(&s[1..])
-                        .parse(&['-'])
+                    true => parse(&s[1..])
                         .map(|symbol| self.literals.get(&symbol).map(|l| l.negate()))
                         .flatten(),
-                    _ => Atom(&s)
-                        .parse(&['-'])
+                    _ => parse(&s)
                         .map(|symbol| self.literals.get(&symbol))
                         .flatten()
                         .copied(),
@@ -125,12 +122,10 @@ impl Navigator {
             .map(|f| {
                 let s = f.to_string();
                 match s.starts_with("~") {
-                    true => Atom(&s[1..])
-                        .parse(&['-'])
+                    true => parse(&s[1..])
                         .map(|symbol| self.literals.get(&symbol).map(|l| l.negate()))
                         .flatten(),
-                    _ => Atom(&s)
-                        .parse(&['-'])
+                    _ => parse(&s)
                         .map(|symbol| self.literals.get(&symbol))
                         .flatten()
                         .copied(),
@@ -349,7 +344,6 @@ impl FacetedNavigation for Navigator {
                             .ok()
                     })
                     .ok()?;
-
 
                 Some(bcs.difference_as_set(&ccs))
             }
