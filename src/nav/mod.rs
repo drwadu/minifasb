@@ -46,6 +46,27 @@ impl Navigator {
         parse(exp)
     }
 
+    /// TODO
+    pub fn route_repr(&self) {
+        print!("| ");
+        self.route.0.iter().for_each(|f| print!("{} ", f));
+        print!("& ");
+        self.route.1.iter().for_each(|f| {
+            match f.get_integer() > 0 {
+                true => self
+                    .literals
+                    .iter()
+                    .find(|(_, v)| *v == f)
+                    .map(|(k, _)| print!("{} ", k.to_string())),
+                _ => self
+                    .literals
+                    .iter()
+                    .find(|(_, v)| *v == f)
+                    .map(|(k, _)| print!("~{} ", k.to_string())),
+            };
+        });
+    }
+
     fn assume(&mut self, disjunctive: bool) -> Result<()> {
         self.ctl
             .backend()
@@ -276,6 +297,7 @@ impl FacetedNavigation for Navigator {
         peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
         disjunctive: Option<bool>,
     ) -> Option<HashSet<Symbol>> {
+        dbg!(&self.route);
         self.and_delta(peek_on.0).ok()?;
         self.or_delta(peek_on.1).ok()?;
         let disjunctive_ = match disjunctive {
@@ -283,6 +305,7 @@ impl FacetedNavigation for Navigator {
             _ => !self.route.0.is_empty(),
         };
         self.assume(disjunctive_).ok()?;
+        dbg!(&self.route);
 
         self.ctl
             .configuration_mut()
