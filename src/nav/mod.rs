@@ -120,8 +120,25 @@ impl Navigator {
     }
 
     /// Enumerates `n` answer sets within sub-space encoded by current route.
-    pub fn solutions(&mut self, n: usize, peek_on: Option<&[SolverLiteral]>) -> Result<()> {
-        let route = peek_on.unwrap_or(&self.route.1);
+    pub fn solutions(&mut self, n: usize, peek_on: impl Iterator<Item = String>) -> Result<()> {
+        let route = peek_on
+            .map(|f| {
+                let s = f.to_string();
+                match s.starts_with("~") {
+                    true => Atom(&s[1..])
+                        .parse(&['-'])
+                        .map(|symbol| self.literals.get(&symbol).map(|l| l.negate()))
+                        .flatten(),
+                    _ => Atom(&s)
+                        .parse(&['-'])
+                        .map(|symbol| self.literals.get(&symbol))
+                        .flatten()
+                        .copied(),
+                }
+            })
+            .flatten()
+            .collect::<Vec<_>>();
+
         let mut handle = self.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
         let mut i = 1;
 
@@ -166,13 +183,28 @@ impl Navigator {
 }
 
 pub trait FacetedNavigation {
-    fn brave_consequences(&mut self, peek_on: &[SolverLiteral]) -> Option<Vec<Symbol>>;
-    fn cautious_consequences(&mut self, peek_on: &[SolverLiteral]) -> Option<Vec<Symbol>>;
-    fn facets(&mut self, peek_on: &[SolverLiteral]) -> Option<HashSet<Symbol>>;
+    fn brave_consequences(
+        &mut self,
+        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+    ) -> Option<Vec<Symbol>>;
+    fn cautious_consequences(
+        &mut self,
+        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+    ) -> Option<Vec<Symbol>>;
+    fn facets(
+        &mut self,
+        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+        disjunctive: Option<bool>,
+    ) -> Option<HashSet<Symbol>>;
 }
 impl FacetedNavigation for Navigator {
-    fn brave_consequences(&mut self, peek_on: &[SolverLiteral]) -> Option<Vec<Symbol>> {
-        self.assume(!self.route.1.is_empty()).ok()?;
+    fn brave_consequences(
+        &mut self,
+        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+    ) -> Option<Vec<Symbol>> {
+        self.and_delta(peek_on.0).ok()?;
+        self.or_delta(peek_on.1).ok()?;
+        self.assume(!self.route.0.is_empty()).ok()?;
 
         self.ctl
             .configuration_mut()
@@ -185,10 +217,7 @@ impl FacetedNavigation for Navigator {
             .ok()?;
 
         let mut bcs = vec![];
-        let mut handle = self
-            .ctl
-            .fasb_solve(clingo::SolveMode::YIELD, &peek_on)
-            .ok()?;
+        let mut handle = self.ctl.fasb_solve(clingo::SolveMode::YIELD, &[]).ok()?;
 
         while let Ok(Some(xs)) = handle.model() {
             bcs = xs.symbols(clingo::ShowType::SHOWN).ok()?;
@@ -208,8 +237,13 @@ impl FacetedNavigation for Navigator {
         Some(bcs)
     }
 
-    fn cautious_consequences(&mut self, peek_on: &[SolverLiteral]) -> Option<Vec<Symbol>> {
-        self.assume(!self.route.1.is_empty()).ok()?;
+    fn cautious_consequences(
+        &mut self,
+        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+    ) -> Option<Vec<Symbol>> {
+        self.and_delta(peek_on.0).ok()?;
+        self.or_delta(peek_on.1).ok()?;
+        self.assume(!self.route.0.is_empty()).ok()?;
 
         self.ctl
             .configuration_mut()
@@ -222,10 +256,7 @@ impl FacetedNavigation for Navigator {
             .ok()?;
 
         let mut ccs = vec![];
-        let mut handle = self
-            .ctl
-            .fasb_solve(clingo::SolveMode::YIELD, &peek_on)
-            .ok()?;
+        let mut handle = self.ctl.fasb_solve(clingo::SolveMode::YIELD, &[]).ok()?;
 
         while let Ok(Some(xs)) = handle.model() {
             ccs = xs.symbols(clingo::ShowType::SHOWN).ok()?;
@@ -245,13 +276,94 @@ impl FacetedNavigation for Navigator {
         Some(ccs)
     }
 
-    fn facets(&mut self, peek_on: &[SolverLiteral]) -> Option<HashSet<Symbol>> {
-        let bcs = self.brave_consequences(peek_on)?;
+    fn facets(
+        &mut self,
+        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+        disjunctive: Option<bool>,
+    ) -> Option<HashSet<Symbol>> {
+        self.and_delta(peek_on.0).ok()?;
+        self.or_delta(peek_on.1).ok()?;
+        let disjunctive_ = match disjunctive {
+            Some(t) => t,
+            _ => !self.route.0.is_empty(),
+        };
+        self.assume(disjunctive_).ok()?;
+
+        self.ctl
+            .configuration_mut()
+            .map(|c| {
+                c.root()
+                    .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
+                    .map(|sk| c.value_set(sk, "brave"))
+                    .ok()
+            })
+            .ok()?;
+
+        let mut bcs = vec![];
+        let mut handle = self.ctl.fasb_solve(clingo::SolveMode::YIELD, &[]).ok()?;
+
+        while let Ok(Some(xs)) = handle.model() {
+            bcs = xs.symbols(clingo::ShowType::SHOWN).ok()?;
+            handle.resume().ok()?;
+        }
+
         match bcs.is_empty() {
-            true => Some(HashSet::new()),
-            _ => Some(bcs.difference_as_set(&self.cautious_consequences(peek_on)?)),
+            true => {
+                self.ctl
+                    .configuration_mut()
+                    .map(|c| {
+                        c.root()
+                            .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
+                            .map(|sk| c.value_set(sk, "auto"))
+                            .ok()
+                    })
+                    .ok()?;
+                Some(HashSet::new())
+            }
+            _ => {
+                self.ctl
+                    .configuration_mut()
+                    .map(|c| {
+                        c.root()
+                            .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
+                            .map(|sk| c.value_set(sk, "cautious"))
+                            .ok()
+                    })
+                    .ok()?;
+                self.assume(disjunctive_).ok()?;
+
+                let mut ccs = vec![];
+                let mut handle = self.ctl.fasb_solve(clingo::SolveMode::YIELD, &[]).ok()?;
+
+                while let Ok(Some(xs)) = handle.model() {
+                    ccs = xs.symbols(clingo::ShowType::SHOWN).ok()?;
+                    handle.resume().ok()?;
+                }
+
+                self.ctl
+                    .configuration_mut()
+                    .map(|c| {
+                        c.root()
+                            .and_then(|rk| c.map_at(rk, "solve.enum_mode"))
+                            .map(|sk| c.value_set(sk, "auto"))
+                            .ok()
+                    })
+                    .ok()?;
+
+
+                Some(bcs.difference_as_set(&ccs))
+            }
         }
     }
+}
+
+pub trait WeightedNavigation {
+    fn eval_sharp(&mut self, peek_on: &[String]) -> (usize, Option<usize>);
+    fn eval_sharp_restricted(
+        &mut self,
+        peek_on: &[String],
+        target: &[String],
+    ) -> (usize, Option<usize>);
 }
 
 #[cfg(test)]
@@ -270,19 +382,19 @@ mod tests {
         let mut nav = Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
         let delta = vec!["b".to_owned(), "~c".to_owned()];
         nav.and_delta(delta.iter())?;
-        nav.solutions(0, None)?;
+        nav.solutions(0, std::iter::empty())?;
 
         nav.clear()?;
 
         let delta = vec!["~a".to_owned()];
         nav.and_delta(delta.iter())?;
-        nav.solutions(0, None)?;
+        nav.solutions(0, std::iter::empty())?;
 
         nav.clear()?;
 
         let delta = vec!["a".to_owned(), "b".to_owned()];
         nav.and_delta(delta.iter())?;
-        nav.solutions(0, None)?;
+        nav.solutions(0, std::iter::empty())?;
 
         Ok(())
     }
@@ -292,13 +404,13 @@ mod tests {
         let mut nav = Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
         let delta = vec!["a".to_owned(), "d".to_owned()];
         nav.or_delta(delta.iter())?;
-        nav.solutions(0, None)?;
+        nav.solutions(0, std::iter::empty())?;
 
         nav.clear()?;
 
         let delta = vec!["a".to_owned(), "~e".to_owned()];
         nav.and_delta(delta.iter())?;
-        nav.solutions(0, None)?;
+        nav.solutions(0, std::iter::empty())?;
 
         Ok(())
     }
@@ -312,13 +424,16 @@ mod tests {
         nav.and_delta(delta.iter())?; // delta = (a | b) & ~a
         let delta = vec!["a".to_owned()];
         nav.and_delta(delta.iter())?; // delta = (a | b) & ~a & a
-        nav.solutions(0, None)?;
-        dbg!(nav
-            .facets(&[])
-            .unwrap()
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>());
+        println!("(a | b) & ~a & a");
+        nav.solutions(0, std::iter::empty())?;
+        println!(
+            "{:?}",
+            nav.facets((std::iter::empty(), std::iter::empty()), None)
+                .unwrap()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+        );
 
         nav.clear()?;
 
@@ -328,13 +443,16 @@ mod tests {
         nav.and_delta(delta.iter())?; // delta = (a | b) & ~a
         let delta = vec!["a".to_owned()];
         nav.or_delta(delta.iter())?; // delta = (a | b) & ~a | a = (a | a | b) & ~a = (a | b) & ~a
-        nav.solutions(0, None)?;
-        dbg!(nav
-            .facets(&[])
-            .unwrap()
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>());
+        println!("(a | b) & ~a | a = (a | a | b) & ~a = (a | b) & ~a");
+        nav.solutions(0, std::iter::empty())?;
+        println!(
+            "{:?}",
+            nav.facets((std::iter::empty(), std::iter::empty()), None)
+                .unwrap()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+        );
 
         nav.clear()?;
 
@@ -342,25 +460,31 @@ mod tests {
         nav.or_delta(delta.iter())?; // delta = a | b
         let delta = vec!["~a".to_owned(), "d".to_owned()];
         nav.and_delta(delta.iter())?; // delta = (a | b) & (~a & d)
-        nav.solutions(0, None)?;
-        dbg!(nav
-            .facets(&[])
-            .unwrap()
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>());
+        println!("(a | b) & (~a & d)");
+        nav.solutions(0, std::iter::empty())?;
+        println!(
+            "{:?}",
+            nav.facets((std::iter::empty(), std::iter::empty()), None)
+                .unwrap()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+        );
 
         nav.clear()?;
 
         let delta = vec!["a".to_owned(), "b".to_owned()];
         nav.or_delta(delta.iter())?; // delta = a | b
-        nav.solutions(2, None)?;
-        dbg!(nav
-            .facets(&[])
-            .unwrap()
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<_>>());
+        println!("a | b");
+        nav.solutions(2, std::iter::empty())?;
+        println!(
+            "{:?}",
+            nav.facets((std::iter::empty(), std::iter::empty()), None)
+                .unwrap()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+        );
 
         Ok(())
     }
