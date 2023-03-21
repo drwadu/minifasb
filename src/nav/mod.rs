@@ -50,7 +50,13 @@ impl Navigator {
     pub fn route_repr(&self) {
         print!("| ");
         dbg!(&self.route.0);
-        self.route.0.iter().for_each(|f| print!("{} ", f));
+        self.route
+            .0
+            .iter()
+            .for_each(|f| match f.starts_with("not ") {
+                true => print!("{} ", &f[4..]),
+                _ => print!("{} ", f),
+            });
         print!("& ");
         self.route.1.iter().for_each(|f| {
             match f.get_integer() > 0 {
