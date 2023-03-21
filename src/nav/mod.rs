@@ -83,7 +83,6 @@ impl Navigator {
             .and_then(|mut b| b.assume(&self.route.1))
             .map_err(|e| errors::NavigatorError::Clingo(e))?;
         if disjunctive {
-            /*
             let or_constraint = format!(
                 ":- {}.",
                 self.route
@@ -101,15 +100,12 @@ impl Navigator {
             return self
                 .ctl
                 .ground(&[
-                    clingo::Part::new("base", vec![])?,
-                    clingo::Part::new("#program or..", vec![])?,
+                    //clingo::Part::new("base", vec![])?,
+                    clingo::Part::new("or", vec![])?,
                 ])
                 .map_err(|e| errors::NavigatorError::Clingo(e));
-            */
-            // add rule: :- not d, c.
-            //let head = vec![];
-            //let body = vec![Literal::from(atom_d).negate(), atom_ids[2]];
 
+            /*
             let body = self
                 .route
                 .0
@@ -125,6 +121,7 @@ impl Navigator {
                 .collect::<Vec<_>>();
 
             self.ctl.backend()?.rule(false, &[], &body)?
+            */
         }
 
         Ok(())
