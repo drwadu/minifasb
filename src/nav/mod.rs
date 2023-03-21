@@ -109,9 +109,10 @@ impl Navigator {
     }
 
     pub fn clear(&mut self) -> Result<()> {
+        let disjunctive = !self.route.0.is_empty();
         self.route.0.clear();
         self.route.1.clear();
-        self.assume(false)
+        self.assume(disjunctive)
     }
 
     /// Activates conjunctive route `delta`.
