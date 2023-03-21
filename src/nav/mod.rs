@@ -61,7 +61,7 @@ impl Navigator {
                 _ => self
                     .literals
                     .iter()
-                    .find(|(_, v)| *v == f)
+                    .find(|(_, v)| **v == f.negate())
                     .map(|(k, _)| print!("~{} ", k.to_string())),
             };
         });
