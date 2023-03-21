@@ -49,6 +49,7 @@ impl Navigator {
     /// TODO
     pub fn route_repr(&self) {
         print!("| ");
+        dbg!(&self.route.0);
         self.route.0.iter().for_each(|f| print!("{} ", f));
         print!("& ");
         self.route.1.iter().for_each(|f| {
