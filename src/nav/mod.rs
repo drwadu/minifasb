@@ -20,6 +20,8 @@ pub struct Navigator {
     literals: HashMap<Symbol, SolverLiteral>,
     /// Input program and args.
     input: (String, Vec<String>),
+    // Handle on Solutions
+    //handle: Option<clingo::FasbSolveHandle>,
 }
 impl Navigator {
     /// Constructs `Navigator`.
@@ -106,6 +108,7 @@ impl Navigator {
             self.ctl = ctl;
         }
 
+        dbg!(&self.input.0);
         self.ctl
             .backend()
             .and_then(|mut b| b.assume(&self.route.1))
