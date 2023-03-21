@@ -77,6 +77,7 @@ impl Navigator {
         });
     }
 
+    /// TODO
     fn assume(&mut self, disjunctive: bool) -> Result<()> {
         if disjunctive {
             let lp = match self.route.0.is_empty() {
@@ -111,6 +112,7 @@ impl Navigator {
             .map_err(|e| errors::NavigatorError::Clingo(e))
     }
 
+    /// TODO
     pub fn clear(&mut self) -> Result<()> {
         let disjunctive = !self.route.0.is_empty();
         self.route.0.clear();
@@ -138,7 +140,7 @@ impl Navigator {
                 _ => println!("invalid input ..."),
             });
 
-        self.assume(!self.route.1.is_empty())
+        self.assume(false)
     }
 
     /// Activates disjunctive route `delta`.
