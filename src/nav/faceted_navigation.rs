@@ -22,31 +22,31 @@ pub fn cc(
 }
 
 /// TODO
-pub fn fs(
+pub fn fs<S: ToString>(
     nav: &mut impl FacetedNavigation,
-    peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+    peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
 ) -> Option<HashSet<Symbol>> {
     nav.facets(peek_on)
 }
 
 pub trait FacetedNavigation {
-    fn brave_consequences(
+    fn brave_consequences<S: ToString>(
         &mut self,
-        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+        peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
     ) -> Option<Vec<Symbol>>;
-    fn cautious_consequences(
+    fn cautious_consequences<S: ToString>(
         &mut self,
-        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+        peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
     ) -> Option<Vec<Symbol>>;
-    fn facets(
+    fn facets<S: ToString>(
         &mut self,
-        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+        peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
     ) -> Option<HashSet<Symbol>>;
 }
 impl FacetedNavigation for Navigation {
-    fn brave_consequences(
+    fn brave_consequences<S: ToString>(
         &mut self,
-        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+        peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
     ) -> Option<Vec<Symbol>> {
         let (nav, route) = match self {
             Self::And(nav) => {
@@ -110,9 +110,9 @@ impl FacetedNavigation for Navigation {
         consequences(Consequences::Brave, nav, &route)
     }
 
-    fn cautious_consequences(
+    fn cautious_consequences<S: ToString>(
         &mut self,
-        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+        peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
     ) -> Option<Vec<Symbol>> {
         let (nav, route) = match self {
             Self::And(nav) => {
@@ -176,9 +176,9 @@ impl FacetedNavigation for Navigation {
         consequences(Consequences::Cautious, nav, &route)
     }
 
-    fn facets(
+    fn facets<S: ToString>(
         &mut self,
-        peek_on: (impl Iterator<Item = String>, impl Iterator<Item = String>),
+        peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
     ) -> Option<HashSet<Symbol>> {
         let (nav, route) = match self {
             Self::And(nav) => {
