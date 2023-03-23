@@ -1,5 +1,6 @@
 pub mod errors;
 pub mod faceted_navigation;
+pub mod weighted_navigation;
 mod utils;
 
 use crate::lex::*;
@@ -351,14 +352,6 @@ impl Essential for Navigation {
     }
 }
 
-pub trait WeightedNavigation {
-    fn eval_sharp(&mut self, peek_on: &[String]) -> (usize, Option<usize>);
-    fn eval_sharp_restricted(
-        &mut self,
-        peek_on: &[String],
-        target: &[String],
-    ) -> (usize, Option<usize>);
-}
 
 #[cfg(test)]
 mod tests {

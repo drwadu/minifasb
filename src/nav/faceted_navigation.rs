@@ -29,6 +29,14 @@ pub fn fs<S: ToString>(
     nav.facets(peek_on)
 }
 
+/// TODO
+pub fn fs_stats<S: ToString>(
+    nav: &mut impl FacetedNavigation,
+    peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
+) -> Option<(usize,usize,usize)> {
+    nav.stats(peek_on)
+}
+
 pub trait FacetedNavigation {
     fn brave_consequences<S: ToString>(
         &mut self,
@@ -42,6 +50,10 @@ pub trait FacetedNavigation {
         &mut self,
         peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
     ) -> Option<HashSet<Symbol>>;
+    fn stats<S: ToString>(
+        &mut self,
+        peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
+    ) -> Option<(usize, usize, usize)>;
 }
 impl FacetedNavigation for Navigation {
     fn brave_consequences<S: ToString>(
@@ -244,6 +256,82 @@ impl FacetedNavigation for Navigation {
                 .as_ref()
                 .and_then(|ccs| Some(bcs.difference_as_set(ccs))),
             _ => Some(bcs.to_hashset()),
+        }
+    }
+
+    fn stats<S: ToString>(
+        &mut self,
+        peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
+    ) -> Option<(usize, usize, usize)> {
+        let (nav, route) = match self {
+            Self::And(nav) => {
+                let mut route = peek_on
+                    .0
+                    .map(|f| {
+                        let s = f.to_string();
+                        match s.starts_with("~") {
+                            true => parse(&s[1..])
+                                .map(|symbol| nav.literals.get(&symbol).map(|l| l.negate()))
+                                .flatten(),
+                            _ => parse(&s)
+                                .map(|symbol| nav.literals.get(&symbol))
+                                .flatten()
+                                .copied(),
+                        }
+                    })
+                    .flatten()
+                    .collect::<Vec<_>>();
+                route.extend(nav.route.1.clone());
+                (nav, route)
+            }
+            Self::AndOr(nav) => {
+                let route = peek_on
+                    .1
+                    .map(|f| {
+                        let s = f.to_string();
+                        match s.starts_with("~") {
+                            true => parse(&s[1..]),
+                            _ => parse(&s),
+                        }
+                    })
+                    .flatten()
+                    .collect::<Vec<_>>();
+                if !route.is_empty() {
+                    nav.or_delta(route.iter());
+                }
+                let mut route = peek_on
+                    .0
+                    .map(|f| {
+                        let s = f.to_string();
+                        match s.starts_with("~") {
+                            true => parse(&s[1..])
+                                .map(|symbol| nav.literals.get(&symbol).map(|l| l.negate()))
+                                .flatten(),
+                            _ => parse(&s)
+                                .map(|symbol| nav.literals.get(&symbol))
+                                .flatten()
+                                .copied(),
+                        }
+                    })
+                    .flatten()
+                    .collect::<Vec<_>>();
+                route.extend(nav.route.1.clone());
+
+                (nav, route)
+            }
+        };
+
+        let bcs = consequences(Consequences::Brave, nav, &route)?;
+        match !bcs.is_empty() {
+            true => {
+                let ccs = consequences(Consequences::Cautious, nav, &route)?;
+                Some((
+                    bcs.len(),
+                    ccs.len(),
+                    bcs.to_hashset().difference(&ccs.to_hashset()).count(),
+                ))
+            }
+            _ => Some((0, 0, 0)),
         }
     }
 }
