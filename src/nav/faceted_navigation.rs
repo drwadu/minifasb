@@ -33,7 +33,7 @@ pub fn fs<S: ToString>(
 pub fn fs_stats<S: ToString>(
     nav: &mut impl FacetedNavigation,
     peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
-) -> Option<(usize,usize,usize)> {
+) -> Option<(usize, usize, usize)> {
     nav.stats(peek_on)
 }
 

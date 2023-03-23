@@ -1,10 +1,12 @@
-use super::utils::ToHashSet;
-use super::{parse, Navigation};
-use clingo::{SolverLiteral, Symbol};
-use std::collections::HashSet;
-
 use super::faceted_navigation::{fs_stats, FacetedNavigation};
-use super::Navigator;
+
+/// TODO
+pub fn count<S: ToString>(
+    nav: &mut impl WeightedNavigation,
+    peek_on: (impl Iterator<Item = S>, impl Iterator<Item = S>),
+) -> Option<(usize, Option<usize>)> {
+    nav.eval_sharp(peek_on)
+}
 
 pub trait WeightedNavigation {
     fn eval_sharp<S: ToString>(
