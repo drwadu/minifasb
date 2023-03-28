@@ -7,6 +7,7 @@ edition = "2021"
 #clingo = { version = "0.7.2", features = ["static-linking"] }
 clingo = { version = "0.7.2", features = ["static-linking"], git = "https://github.com/drwadu/clingo-rs", branch = "latest" }
 thiserror = "1.0.40"
+regex = "1.7.3"
 
 [dev-dependencies]
 rand = "0.8"

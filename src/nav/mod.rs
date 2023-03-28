@@ -1,13 +1,13 @@
 pub mod errors;
 pub mod faceted_navigation;
-pub mod weighted_navigation;
 mod utils;
+pub mod weighted_navigation;
 
-use crate::lex::*;
+use crate::{lex::*, nav::utils::ToHashSet};
 
 use errors::Result;
 
-use clingo::{Control, SolverLiteral, Symbol};
+use clingo::{ast, Control, SolverLiteral, Symbol};
 use std::collections::{HashMap, HashSet};
 
 /// Pretty prints route as `| f_0 ... f_n & f_n+1 ... f_m`.
@@ -39,6 +39,57 @@ pub fn enumerate_solutions<S: ToString>(
     nav.solutions(n, peek_on)
 }
 
+////////
+pub struct OnStatementData<'a, 'b> {
+    atom: &'b ast::SymbolicAtom<'b>,
+    builder: &'a mut ast::ProgramBuilder<'a>,
+}
+
+impl<'a, 'b> ast::StatementHandler for OnStatementData<'a, 'b> {
+    // adds atom enable to all rule bodies
+    fn on_statement(&mut self, stm: &ast::Statement) -> bool {
+        let stm_clone = stm.clone();
+        // pass through all statements that are not rules
+        match stm_clone.is_a().unwrap() {
+            ast::StatementIsA::Rule(stm) => {
+                let atom_copy = self.atom.clone();
+                dbg!(self.atom.to_string());
+                //self.builder
+                //    .add(&rule.into())
+                //    .expect("Failed to add Rule to ProgramBuilder.");
+            }
+            _ => {
+                self.builder
+                    .add(stm)
+                    .expect("Failed to add Statement to ProgramBuilder.");
+            }
+        }
+        true
+    }
+}
+fn copy_program(source: impl Into<String> + Clone) -> String {
+    let mut copy = vec![];
+    let re = regex::Regex::new(r"([a-z]+[_0-9_]*)").expect("error: copying program failed.");
+
+    for line in source.clone().into().split("\n") {
+        //dbg!(&line);
+        let mut new_line = line.to_owned();
+        let mut mod_in_line = vec![].to_hashset();
+        for x in re.find_iter(line) {
+            let s = x.as_str();
+            if !mod_in_line.contains(s) {
+                let y = &new_line.replace(s, &format!("{}_", s));
+                new_line = y.to_owned();
+                mod_in_line.insert(s);
+            }
+        }
+        copy.push(new_line);
+    }
+
+    copy.join("\n")
+}
+////////
+
 pub struct Navigator {
     /// Clingo solver.
     ctl: Control,
@@ -55,7 +106,11 @@ impl Navigator {
     pub fn new(source: impl Into<String>, args: Vec<String>) -> Result<Self> {
         let mut ctl = clingo::control(args.clone())?;
 
-        let lp = source.into();
+        let lp_original = source.into();
+        let lp_copy = copy_program(&lp_original);
+        let lp = format!("{lp_original}\n{lp_copy}");
+        //dbg!(&lp);
+
         ctl.add("base", &[], &lp)?;
         ctl.ground(&[clingo::Part::new("base", vec![])?])?;
 
@@ -107,7 +162,7 @@ impl Navigator {
             .map_err(|e| errors::NavigatorError::Clingo(e))
     }
 
-    pub(crate)fn and_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>) {
+    pub(crate) fn and_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>) {
         delta
             .map(|f| {
                 let s = f.to_string();
@@ -127,7 +182,7 @@ impl Navigator {
             });
     }
 
-    pub(crate)fn or_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>) {
+    pub(crate) fn or_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>) {
         // TODO: check if well-formed symbol
         delta.for_each(|f| {
             let s = f.to_string();
@@ -256,7 +311,11 @@ impl Essential for Navigation {
                             println!("Solution {:?}: ", i);
                             let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                             atoms.iter().for_each(|atom| {
-                                print!("{} ", atom.to_string());
+                                let s = atom.to_string();
+                                // FIX:
+                                if !s.ends_with("_") {
+                                    print!("{} ", s);
+                                }
                             });
                             println!();
 
@@ -269,7 +328,11 @@ impl Essential for Navigation {
                             println!("Solution {:?}: ", i);
                             let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                             atoms.iter().for_each(|atom| {
-                                print!("{} ", atom.to_string());
+                                let s = atom.to_string();
+                                // FIX:
+                                if !s.ends_with("_") {
+                                    print!("{} ", s);
+                                }
                             });
                             println!();
 
@@ -352,19 +415,27 @@ impl Essential for Navigation {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /*
     #[test]
     fn startup() {
-        assert!(Navigation::new("a;b. c;d :- b. e.", vec!["0".to_string()]).is_ok());
-        assert!(Navigation::new("a;;b. c;d :- b. e.", vec!["0".to_string()]).is_err());
-        assert!(Navigation::new("a;b. c;d :- b. e.", vec![]).is_ok());
+        assert!(Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()]).is_ok());
+        assert!(Navigator::new("a;;b. c;d :- b. e.", vec!["0".to_string()]).is_err());
+        assert!(Navigator::new("a;b. c;d :- b. e.", vec![]).is_ok());
+
+        assert!(Navigator::new(
+            "{q(I ,1..8)} == 1 :- I = 1..8.
+{q(1..8, J)} == 1 :- J = 1..8.
+:- {q(D-J, J)} >= 2, D = 2..2*8.
+:- {q(D+J, J)} >= 2, D = 1-8..8-1.",
+            vec!["0".to_string()]
+        )
+        .is_ok());
     }
 
+    /*
     #[test]
     fn and_clear() -> Result<()> {
         let mut nav = Navigation::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
