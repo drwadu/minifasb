@@ -101,6 +101,8 @@ pub struct Navigator {
     literals: HashMap<Symbol, SolverLiteral>,
     /// Input program and args.
     input: (String, Vec<String>),
+    /// Facet solver control.
+    ctl_copy: Control,
 }
 impl Navigator {
     pub fn new(source: impl Into<String>, args: Vec<String>) -> Result<Self> {
@@ -111,11 +113,18 @@ impl Navigator {
         let lp = format!("{lp_original}\n{lp_copy}");
         //dbg!(&lp);
 
-        ctl.add("base", &[], &lp)?;
+        ctl.add("base", &[], &lp_original)?;
         ctl.ground(&[clingo::Part::new("base", vec![])?])?;
 
         let mut literals = HashMap::new();
         for atom in ctl.symbolic_atoms()?.iter()? {
+            literals.insert(atom.symbol()?, atom.literal()?);
+        }
+
+        let mut ctl_copy = clingo::control(args.clone())?;
+        ctl_copy.add("base", &[], &lp)?;
+        ctl_copy.ground(&[clingo::Part::new("base", vec![])?])?;
+        for atom in ctl_copy.symbolic_atoms()?.iter()? {
             literals.insert(atom.symbol()?, atom.literal()?);
         }
 
@@ -124,7 +133,8 @@ impl Navigator {
             route: (vec![], vec![]),
             facets: HashSet::default(),
             literals,
-            input: (lp, args),
+            input: (lp_original, args),
+            ctl_copy,
         })
     }
 
@@ -157,6 +167,41 @@ impl Navigator {
         }
 
         self.ctl
+            .backend()
+            .and_then(|mut b| b.assume(&self.route.1))
+            .map_err(|e| errors::NavigatorError::Clingo(e))
+    }
+
+    fn assume_copy(&mut self, disjunctive: bool) -> Result<()> {
+        if disjunctive {
+            let lp = match self.route.0.is_empty() {
+                true => self.input.0.clone(),
+                _ => format!(
+                    "{}\n:- {}.",
+                    self.input.0,
+                    self.route
+                        .0
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",") // TODO: mäh
+                ),
+            };
+
+            // FIX
+            let mut ctl_copy = clingo::control(self.input.1.clone())?; 
+            ctl_copy.add("base", &[], &lp)?;
+            ctl_copy.ground(&[clingo::Part::new("base", vec![])?])?;
+
+            let mut literals = HashMap::new();
+            for atom in ctl_copy.symbolic_atoms()?.iter()? {
+                literals.insert(atom.symbol()?, atom.literal()?);
+            }
+
+            self.ctl_copy = ctl_copy;
+        }
+
+        self.ctl_copy
             .backend()
             .and_then(|mut b| b.assume(&self.route.1))
             .map_err(|e| errors::NavigatorError::Clingo(e))
@@ -311,11 +356,7 @@ impl Essential for Navigation {
                             println!("Solution {:?}: ", i);
                             let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                             atoms.iter().for_each(|atom| {
-                                let s = atom.to_string();
-                                // FIX:
-                                if !s.ends_with("_") {
-                                    print!("{} ", s);
-                                }
+                                print!("{} ", atom.to_string());
                             });
                             println!();
 
@@ -328,11 +369,7 @@ impl Essential for Navigation {
                             println!("Solution {:?}: ", i);
                             let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                             atoms.iter().for_each(|atom| {
-                                let s = atom.to_string();
-                                // FIX:
-                                if !s.ends_with("_") {
-                                    print!("{} ", s);
-                                }
+                                print!("{} ", atom.to_string());
                             });
                             println!();
 
