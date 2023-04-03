@@ -41,8 +41,8 @@ impl<T: FacetedNavigation> Incidences<T> for Structure {
                     .flatten()
                     .for_each(|fs| {
                         xs.iter().for_each(|f| match fs.contains(f) {
-                            true => print!("1"),
-                            _ => print!("0"),
+                            true => print!("x"),
+                            _ => print!(" "),
                         });
                         print!("\n")
                     });
