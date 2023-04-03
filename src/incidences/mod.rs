@@ -44,8 +44,8 @@ impl<T: FacetedNavigation> Incidences<T> for Structure {
                             true => print!("x"),
                             _ => print!(" "),
                         });
+                        println!()
                     });
-                println!()
             }
             _ => todo!(),
         }
