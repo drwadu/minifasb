@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use super::nav::faceted_navigation::{fs, FacetedNavigation};
 use clingo::Symbol;
 
@@ -27,13 +29,20 @@ impl<T: FacetedNavigation> Incidences<T> for Structure {
     fn show(&mut self, nav: &mut T) {
         match self {
             Self::F(ord) => {
-                ord.iter()
+                let xs = match ord.is_empty() {
+                    true => fs(nav, (std::iter::empty::<String>(), std::iter::empty()))
+                        .unwrap_or(HashSet::new())
+                        .into_iter()
+                        .collect::<Vec<_>>(),
+                    _ => ord.to_vec(),
+                };
+                xs.iter()
                     .map(|f| fs(nav, ([f].iter(), std::iter::empty())))
                     .flatten()
                     .for_each(|fs| {
-                        ord.iter().for_each(|f| match fs.contains(f) {
-                            true => print!("1"),
-                            _ => print!("0"),
+                        xs.iter().for_each(|f| match fs.contains(f) {
+                            true => print!("x"),
+                            _ => print!(" "),
                         })
                     });
             }
