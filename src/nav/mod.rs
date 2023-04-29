@@ -110,8 +110,8 @@ impl Navigator {
                         .collect::<Vec<_>>() // TODO: mäh
                         .join("\n")
                 );
-                println!("{:?}", &lp);
-                println!("{:?}", self.input.1.clone());
+                dbg!("{:?}", &lp);
+                dbg!("{:?}", self.input.1.clone());
 
                 let mut ctl = clingo::control(self.input.1.clone())?;
                 ctl.add("base", &[], &lp)?;
@@ -170,6 +170,62 @@ impl Navigator {
                                 }
                                 _ => {
                                     eprintln!("ignoring unknown symbol: {symbol}");
+        iet delta = "a & c | d".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+        let delta = "a & c | d".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+        let delta = "a & c | d".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+        let delta = "a & c | d".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+        let delta = "a & c | d".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+        let delta = "a & c | d".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+        let delta = "a & c | d".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
                                     continue;
                                 }
                             },
