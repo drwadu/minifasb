@@ -26,12 +26,24 @@ pub fn delta<S: ToString>(nav: &mut impl Essential, route: impl Iterator<Item = 
 }
 
 /// Enumerate `n` answer sets under current route conjunctively extended by `peek_on`.
+#[allow(unused)]
 pub fn enumerate_solutions<S: ToString>(
     nav: &mut impl Essential,
     n: usize,
     peek_on: impl Iterator<Item = S>,
 ) -> Result<()> {
     nav.solutions(n, peek_on)
+}
+
+/// Enumerate `n` answer sets under current route conjunctively extended by `peek_on`, while hiding
+/// atoms that are no facets.
+#[allow(unused)]
+pub fn enumerate_solutions_sharp<S: ToString>(
+    nav: &mut impl Essential,
+    n: usize,
+    peek_on: impl Iterator<Item = S>,
+) -> Result<()> {
+    nav.solutions_sharp(n, peek_on)
 }
 
 #[derive(Debug, Clone)]
@@ -47,6 +59,7 @@ pub struct Navigator {
     /// Active route.
     route: String,
     /// Current facets.
+    #[allow(unused)]
     facets: HashSet<Symbol>,
     /// Literals.
     literals: HashMap<Symbol, SolverLiteral>,
@@ -54,6 +67,7 @@ pub struct Navigator {
     input: (String, Vec<String>),
 }
 impl Navigator {
+    #[allow(unused)]
     pub fn new(source: impl Into<String>, args: Vec<String>) -> Result<Self> {
         let mut ctl = clingo::control(args.clone())?;
 
@@ -70,7 +84,6 @@ impl Navigator {
             ctl,
             conjuncts: (vec![], vec![]),
             disjuncts: vec![],
-            //route: (vec![], vec![], vec![]),
             route: "".to_owned(),
             facets: HashSet::default(),
             literals,
@@ -182,10 +195,10 @@ impl Navigator {
                 },
             }
         }
-        //println!("{:?}", &self.route);
     }
 }
 
+#[allow(unused)]
 pub enum Navigation {
     And(Navigator),
     AndOr(Navigator),
@@ -200,6 +213,9 @@ pub trait Essential {
     fn delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>);
     /// Enumerate `n` answer sets under current route conjunctively extended by `peek_on`.
     fn solutions<S: ToString>(&mut self, n: usize, peek_on: impl Iterator<Item = S>) -> Result<()>;
+    /// Enumerate `n` answer sets under current route conjunctively extended by `peek_on`, while
+    /// hiding atoms that are no facets.
+    fn solutions_sharp<S: ToString>(&mut self, n: usize, peek_on: impl Iterator<Item = S>) -> Result<()>;
 }
 impl Essential for Navigation {
     fn route_repr(&self) {
@@ -249,15 +265,29 @@ impl Essential for Navigation {
             }
         }
     }
+
+    fn solutions_sharp<S: ToString>(&mut self, n: usize, peek_on: impl Iterator<Item = S>) -> Result<()> {
+        match self {
+            Self::And(nav) => {
+                let mut route = read_peek_on(peek_on, nav);
+                route.extend(nav.conjuncts.0.clone());
+
+                output_answer_sets_sharp(nav, &route, n)
+            }
+            Self::AndOr(nav) => {
+                let route = read_peek_on(peek_on, nav);
+
+                nav.assume()?;
+
+                output_answer_sets_sharp(nav, &route, n)
+            }
+        }
+    }
 }
 
 fn output_answer_sets(nav: &mut Navigator, route: &[SolverLiteral], n: usize) -> Result<()> {
     let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
     let mut i = 1;
-
-    dbg!(&nav.conjuncts);
-    dbg!(&nav.disjuncts);
-    dbg!(route);
 
     match n == 0 {
         true => {
@@ -280,6 +310,55 @@ fn output_answer_sets(nav: &mut Navigator, route: &[SolverLiteral], n: usize) ->
                 atoms.iter().for_each(|atom| {
                     print!("{} ", atom.to_string());
                 });
+                println!();
+
+                i += 1;
+                if i > n {
+                    break;
+                }
+                handle.resume()?;
+            }
+        }
+    }
+
+    println!("found {:?}", i - 1);
+
+    return handle
+        .close()
+        .map_err(|e| errors::NavigatorError::Clingo(e));
+}
+
+fn output_answer_sets_sharp(nav: &mut Navigator, route: &[SolverLiteral], n: usize) -> Result<()> {
+    let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
+    let mut i = 1;
+
+    match n == 0 {
+        true => {
+            while let Ok(Some(answer_set)) = handle.model() {
+                println!("Solution {:?}: ", i);
+                let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                atoms
+                    .iter()
+                    .filter(|atom| nav.facets.contains(atom))
+                    .for_each(|atom| {
+                        print!("{} ", atom.to_string());
+                    });
+                println!();
+
+                i += 1;
+                handle.resume()?;
+            }
+        }
+        _ => {
+            while let Ok(Some(answer_set)) = handle.model() {
+                println!("Solution {:?}: ", i);
+                let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                atoms
+                    .iter()
+                    .filter(|atom| nav.facets.contains(atom))
+                    .for_each(|atom| {
+                        print!("{} ", atom.to_string());
+                    });
                 println!();
 
                 i += 1;
@@ -388,7 +467,7 @@ mod tests {
         aonav.solutions(0, std::iter::empty::<String>())?;
         println!();
         aonav.clear()?;
-        
+
         let delta = "a | d".split(" ");
         aonav.delta(delta);
         println!();
@@ -415,8 +494,6 @@ mod tests {
         aonav.solutions(0, std::iter::empty::<String>())?;
         println!();
         aonav.clear()?;
-
-
 
         //aonav.route_repr();
         //println!();
