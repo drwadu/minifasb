@@ -17,14 +17,14 @@ pub trait Soe {
     fn s_greedy(
         nav: &mut impl FacetedNavigation,
         peek_on: impl Iterator<Item = String>,
-        t: impl Iterator<Item = String>;
+        t: impl Iterator<Item = String>,
     );
 }
 impl Soe for Navigation {
     fn s_greedy(
         nav: &mut impl FacetedNavigation,
         peek_on: impl Iterator<Item = String>,
-        t: impl Iterator<Item = String>;
+        t: impl Iterator<Item = String>,
     ) {
         unimplemented!()
     }
