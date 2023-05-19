@@ -9,6 +9,9 @@ use errors::Result;
 
 use clingo::{Control, SolverLiteral, Symbol};
 use std::collections::{HashMap, HashSet};
+use std::sync::Once;
+
+static ONCE: Once = Once::new();
 
 /// Pretty prints route.
 pub fn show_route(nav: &impl Essential) {
@@ -42,8 +45,9 @@ pub fn enumerate_solutions_sharp<S: ToString>(
     nav: &mut impl Essential,
     n: usize,
     peek_on: impl Iterator<Item = S>,
+    targets: Option<&[String]>,
 ) -> Result<()> {
-    nav.solutions_sharp(n, peek_on)
+    nav.solutions_sharp(n, peek_on, targets)
 }
 
 #[derive(Debug, Clone)]
@@ -219,6 +223,7 @@ pub trait Essential {
         &mut self,
         n: usize,
         peek_on: impl Iterator<Item = S>,
+        targets: Option<&[String]>,
     ) -> Result<()>;
 }
 impl Essential for Navigation {
@@ -274,20 +279,21 @@ impl Essential for Navigation {
         &mut self,
         n: usize,
         peek_on: impl Iterator<Item = S>,
+        targets: Option<&[String]>,
     ) -> Result<()> {
         match self {
             Self::And(nav) => {
                 let mut route = read_peek_on(peek_on, nav);
                 route.extend(nav.conjuncts.0.clone());
 
-                output_answer_sets_sharp(nav, &route, n)
+                output_answer_sets_sharp(nav, &route, n, targets)
             }
             Self::AndOr(nav) => {
                 let route = read_peek_on(peek_on, nav);
 
                 nav.assume()?;
 
-                output_answer_sets_sharp(nav, &route, n)
+                output_answer_sets_sharp(nav, &route, n, targets)
             }
         }
     }
@@ -336,65 +342,71 @@ fn output_answer_sets(nav: &mut Navigator, route: &[SolverLiteral], n: usize) ->
         .map_err(|e| errors::NavigatorError::Clingo(e));
 }
 
-fn output_answer_sets_sharp(nav: &mut Navigator, route: &[SolverLiteral], n: usize) -> Result<()> {
+fn output_answer_sets_sharp(
+    nav: &mut Navigator,
+    route: &[SolverLiteral],
+    n: usize,
+    targets: Option<&[String]>,
+) -> Result<()> {
     let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
     let mut i = 1;
 
-    match n == 0 {
-        true => {
-            while let Ok(Some(answer_set)) = handle.model() {
-                let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                let select = atoms.iter().any(|atom| nav.facets.contains(atom));
-                if select {
-                    println!("Solution {:?}: ", i);
+    if let Some(filter_on) = targets {
+        match n == 0 {
+            true => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+
                     let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                     atoms
                         .iter()
-                        .filter(|atom| nav.facets.contains(atom))
+                        .map(|atom| atom.to_string())
+                        .filter(|atom| filter_on.contains(atom))
                         .for_each(|atom| {
-                            print!("{} ", atom.to_string());
+                            ONCE.call_once(|| {
+                                println!("\nSolution {:?}: ", i);
+                                i += 1;
+                            });
+                            print!("{atom} ");
                         });
-                    println!();
-
-                    i += 1;
                 }
 
                 handle.resume()?;
             }
-        }
-        _ => {
-            while let Ok(Some(answer_set)) = handle.model() {
-                let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                let select = atoms.iter().any(|atom| nav.facets.contains(atom));
-                if select {
+            _ => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                     println!("Solution {:?}: ", i);
                     let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                     atoms
                         .iter()
-                        .filter(|atom| nav.facets.contains(atom))
+                        .map(|atom| atom.to_string())
+                        .filter(|atom| filter_on.contains(atom))
                         .for_each(|atom| {
-                            print!("{} ", atom.to_string());
+                            ONCE.call_once(|| {
+                                println!("\nSolution {:?}: ", i);
+                                i += 1;
+                            });
+                            print!("{atom} ");
                         });
-                    println!();
 
-                    i += 1;
                     if i > n {
                         break;
                     }
-                }
-                dbg!(&atoms, &nav.facets);
-                println!("{select}");
 
-                handle.resume()?;
+                    handle.resume()?;
+                }
             }
         }
+
+        println!("found {:?}", i - 1);
+
+        return handle
+            .close()
+            .map_err(|e| errors::NavigatorError::Clingo(e));
+    } else {
+        output_answer_sets(nav, route, n)
     }
-
-    println!("found {:?}", i - 1);
-
-    return handle
-        .close()
-        .map_err(|e| errors::NavigatorError::Clingo(e));
 }
 
 fn read_peek_on<S: ToString>(
