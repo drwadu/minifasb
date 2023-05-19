@@ -347,17 +347,20 @@ fn output_answer_sets_sharp(nav: &mut Navigator, route: &[SolverLiteral], n: usi
         true => {
             while let Ok(Some(answer_set)) = handle.model() {
                 let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                atoms
-                    .iter()
-                    .filter(|atom| nav.facets.contains(atom))
-                    .for_each(|atom| {
-                        PRINT.call_once(|| {
-                            println!("Solution {:?}: ", i);
-                            i += 1
+                let select = atoms.iter().any(|atom| nav.facets.contains(atom));
+                if select {
+                    println!("Solution {:?}: ", i);
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    atoms
+                        .iter()
+                        .filter(|atom| nav.facets.contains(atom))
+                        .for_each(|atom| {
+                            print!("{} ", atom.to_string());
                         });
-                        print!("{} ", atom.to_string());
-                    });
-                println!();
+                    println!();
+
+                    i += 1;
+                }
 
                 handle.resume()?;
             }
@@ -365,17 +368,23 @@ fn output_answer_sets_sharp(nav: &mut Navigator, route: &[SolverLiteral], n: usi
         _ => {
             while let Ok(Some(answer_set)) = handle.model() {
                 let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                atoms
-                    .iter()
-                    .filter(|atom| nav.facets.contains(atom))
-                    .for_each(|atom| {
-                        PRINT.call_once(|| {
-                            println!("Solution {:?}: ", i);
-                            i += 1
+                let select = atoms.iter().any(|atom| nav.facets.contains(atom));
+                if select {
+                    println!("Solution {:?}: ", i);
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    atoms
+                        .iter()
+                        .filter(|atom| nav.facets.contains(atom))
+                        .for_each(|atom| {
+                            print!("{} ", atom.to_string());
                         });
-                        print!("{} ", atom.to_string());
-                    });
-                println!();
+                    println!();
+
+                    i += 1;
+                    if i > n {
+                        break;
+                    }
+                }
 
                 handle.resume()?;
             }
