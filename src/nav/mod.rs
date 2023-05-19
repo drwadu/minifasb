@@ -9,9 +9,6 @@ use errors::Result;
 
 use clingo::{Control, SolverLiteral, Symbol};
 use std::collections::{HashMap, HashSet};
-use std::sync::Once;
-
-static PRINT: Once = Once::new();
 
 /// Pretty prints route.
 pub fn show_route(nav: &impl Essential) {
@@ -385,6 +382,7 @@ fn output_answer_sets_sharp(nav: &mut Navigator, route: &[SolverLiteral], n: usi
                         break;
                     }
                 }
+                println!("{select}");
 
                 handle.resume()?;
             }
