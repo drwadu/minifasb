@@ -364,7 +364,6 @@ fn output_answer_sets_sharp(nav: &mut Navigator, route: &[SolverLiteral], n: usi
         }
         _ => {
             while let Ok(Some(answer_set)) = handle.model() {
-                println!("Solution {:?}: ", i);
                 let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                 atoms
                     .iter()
