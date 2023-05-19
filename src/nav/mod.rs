@@ -9,6 +9,9 @@ use errors::Result;
 
 use clingo::{Control, SolverLiteral, Symbol};
 use std::collections::{HashMap, HashSet};
+use std::sync::Once;
+
+static PRINT: Once = Once::new();
 
 /// Pretty prints route.
 pub fn show_route(nav: &impl Essential) {
@@ -215,7 +218,11 @@ pub trait Essential {
     fn solutions<S: ToString>(&mut self, n: usize, peek_on: impl Iterator<Item = S>) -> Result<()>;
     /// Enumerate `n` answer sets under current route conjunctively extended by `peek_on`, while
     /// hiding atoms that are no facets.
-    fn solutions_sharp<S: ToString>(&mut self, n: usize, peek_on: impl Iterator<Item = S>) -> Result<()>;
+    fn solutions_sharp<S: ToString>(
+        &mut self,
+        n: usize,
+        peek_on: impl Iterator<Item = S>,
+    ) -> Result<()>;
 }
 impl Essential for Navigation {
     fn route_repr(&self) {
@@ -266,7 +273,11 @@ impl Essential for Navigation {
         }
     }
 
-    fn solutions_sharp<S: ToString>(&mut self, n: usize, peek_on: impl Iterator<Item = S>) -> Result<()> {
+    fn solutions_sharp<S: ToString>(
+        &mut self,
+        n: usize,
+        peek_on: impl Iterator<Item = S>,
+    ) -> Result<()> {
         match self {
             Self::And(nav) => {
                 let mut route = read_peek_on(peek_on, nav);
@@ -335,17 +346,19 @@ fn output_answer_sets_sharp(nav: &mut Navigator, route: &[SolverLiteral], n: usi
     match n == 0 {
         true => {
             while let Ok(Some(answer_set)) = handle.model() {
-                println!("Solution {:?}: ", i);
                 let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                 atoms
                     .iter()
                     .filter(|atom| nav.facets.contains(atom))
                     .for_each(|atom| {
+                        PRINT.call_once(|| {
+                            println!("Solution {:?}: ", i);
+                            i += 1
+                        });
                         print!("{} ", atom.to_string());
                     });
                 println!();
 
-                i += 1;
                 handle.resume()?;
             }
         }
@@ -357,14 +370,14 @@ fn output_answer_sets_sharp(nav: &mut Navigator, route: &[SolverLiteral], n: usi
                     .iter()
                     .filter(|atom| nav.facets.contains(atom))
                     .for_each(|atom| {
+                        PRINT.call_once(|| {
+                            println!("Solution {:?}: ", i);
+                            i += 1
+                        });
                         print!("{} ", atom.to_string());
                     });
                 println!();
 
-                i += 1;
-                if i > n {
-                    break;
-                }
                 handle.resume()?;
             }
         }
