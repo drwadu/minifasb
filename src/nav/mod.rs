@@ -382,6 +382,7 @@ fn output_answer_sets_sharp(nav: &mut Navigator, route: &[SolverLiteral], n: usi
                         break;
                     }
                 }
+                dbg!(&atoms, &nav.facets);
                 println!("{select}");
 
                 handle.resume()?;
