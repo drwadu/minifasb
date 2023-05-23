@@ -1,7 +1,8 @@
 pub mod errors;
 pub mod faceted_navigation;
-pub mod weighted_navigation;
+pub mod modes;
 mod utils;
+pub mod weighted_navigation;
 
 use crate::lex::*;
 
@@ -9,28 +10,30 @@ use errors::Result;
 
 use clingo::{Control, SolverLiteral, Symbol};
 use std::collections::{HashMap, HashSet};
+use std::sync::Once;
 
-/// Pretty prints route as `| f_0 ... f_n & f_n+1 ... f_m`.
+static ONCE: Once = Once::new();
+
+/// Pretty prints route.
+#[allow(unused)]
 pub fn show_route(nav: &impl Essential) {
     nav.route_repr()
 }
 
 /// Clears current route, setting route to empty route.
+#[allow(unused)]
 pub fn clear_route(nav: &mut impl Essential) -> Result<()> {
     nav.clear()
 }
 
-/// Activates all facets in `conjuncts` conjunctively.
-pub fn and<S: ToString>(nav: &mut impl Essential, conjuncts: impl Iterator<Item = S>) {
-    nav.and_delta(conjuncts)
-}
-
-/// Activates all facets in `disjuncts` disjunctively.
-pub fn or<S: ToString>(nav: &mut impl Essential, disjuncts: impl Iterator<Item = S>) {
-    nav.or_delta(disjuncts)
+/// Activates a facets according to specified `route`.
+#[allow(unused)]
+pub fn delta<S: ToString>(nav: &mut impl Essential, route: impl Iterator<Item = S>) {
+    nav.delta(route)
 }
 
 /// Enumerate `n` answer sets under current route conjunctively extended by `peek_on`.
+#[allow(unused)]
 pub fn enumerate_solutions<S: ToString>(
     nav: &mut impl Essential,
     n: usize,
@@ -39,12 +42,32 @@ pub fn enumerate_solutions<S: ToString>(
     nav.solutions(n, peek_on)
 }
 
+/// Enumerate `n` answer sets under current route conjunctively extended by `peek_on`, while hiding
+/// atoms that are no facets.
+#[allow(unused)]
+pub fn enumerate_solutions_sharp<S: ToString>(
+    nav: &mut impl Essential,
+    n: usize,
+    peek_on: impl Iterator<Item = S>,
+    targets: Option<&[String]>,
+) -> Result<()> {
+    nav.solutions_sharp(n, peek_on, targets)
+}
+
+#[derive(Debug, Clone)]
+struct FacetRepr(String);
+
 pub struct Navigator {
     /// Clingo solver.
     ctl: Control,
+    /// Conjuctively activated facets
+    conjuncts: (Vec<SolverLiteral>, Vec<FacetRepr>),
+    /// Disjunctively activated facets
+    disjuncts: Vec<FacetRepr>,
     /// Active route.
-    route: (Vec<String>, Vec<SolverLiteral>),
+    route: String,
     /// Current facets.
+    #[allow(unused)]
     facets: HashSet<Symbol>,
     /// Literals.
     literals: HashMap<Symbol, SolverLiteral>,
@@ -52,6 +75,7 @@ pub struct Navigator {
     input: (String, Vec<String>),
 }
 impl Navigator {
+    #[allow(unused)]
     pub fn new(source: impl Into<String>, args: Vec<String>) -> Result<Self> {
         let mut ctl = clingo::control(args.clone())?;
 
@@ -66,82 +90,133 @@ impl Navigator {
 
         Ok(Self {
             ctl,
-            route: (vec![], vec![]),
+            conjuncts: (vec![], vec![]),
+            disjuncts: vec![],
+            route: "".to_owned(),
             facets: HashSet::default(),
             literals,
             input: (lp, args),
         })
     }
 
-    fn assume(&mut self, disjunctive: bool) -> Result<()> {
-        if disjunctive {
-            let lp = match self.route.0.is_empty() {
-                true => self.input.0.clone(),
-                _ => format!(
-                    "{}\n:- {}.",
+    fn assume(&mut self) -> Result<()> {
+        match !self.disjuncts.is_empty() {
+            true => {
+                let disjunction = self
+                    .disjuncts
+                    .iter()
+                    .map(|f| {
+                        let s = &f.0;
+                        match s.starts_with("~") {
+                            true => s[1..].to_owned(),
+                            _ => format!("not {s}"),
+                        }
+                    })
+                    .collect::<Vec<_>>() // TODO: mäh
+                    .join(",");
+                let lp = format!(
+                    "{}\n{}",
                     self.input.0,
-                    self.route
-                        .0
+                    self.conjuncts
+                        .1
                         .iter()
-                        .map(|s| s.to_string())
-                        .collect::<Vec<_>>()
-                        .join(",") // TODO: mäh
-                ),
-            };
+                        .map(|f| {
+                            let s = &f.0;
+                            let repr = match s.starts_with("~") {
+                                true => s[1..].to_owned(),
+                                _ => format!("not {s}"),
+                            };
+                            format!(":- {repr}, {}.", disjunction)
+                        })
+                        .collect::<Vec<_>>() // TODO: mäh
+                        .join("\n")
+                );
+                println!("{:?}", &lp);
+                println!("{:?}", self.input.1.clone());
 
-            let mut ctl = clingo::control(self.input.1.clone())?;
-            ctl.add("base", &[], &lp)?;
-            ctl.ground(&[clingo::Part::new("base", vec![])?])?;
+                let mut ctl = clingo::control(self.input.1.clone())?;
+                ctl.add("base", &[], &lp)?;
+                ctl.ground(&[clingo::Part::new("base", vec![])?])?;
 
-            let mut literals = HashMap::new();
-            for atom in ctl.symbolic_atoms()?.iter()? {
-                literals.insert(atom.symbol()?, atom.literal()?);
-            }
-
-            self.ctl = ctl;
-        }
-
-        self.ctl
-            .backend()
-            .and_then(|mut b| b.assume(&self.route.1))
-            .map_err(|e| errors::NavigatorError::Clingo(e))
-    }
-
-    pub(crate)fn and_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>) {
-        delta
-            .map(|f| {
-                let s = f.to_string();
-                match s.starts_with("~") {
-                    true => parse(&s[1..])
-                        .map(|symbol| self.literals.get(&symbol).map(|l| l.negate()))
-                        .flatten(),
-                    _ => parse(&s)
-                        .map(|symbol| self.literals.get(&symbol))
-                        .flatten()
-                        .copied(),
+                let mut literals = HashMap::new();
+                for atom in ctl.symbolic_atoms()?.iter()? {
+                    literals.insert(atom.symbol()?, atom.literal()?);
                 }
-            })
-            .for_each(|l| match l {
-                Some(f) => self.route.1.push(f),
-                _ => println!("invalid input ..."),
-            });
+
+                self.ctl = ctl;
+
+                Ok(())
+            }
+            _ => self
+                .ctl
+                .backend()
+                .and_then(|mut b| b.assume(&self.conjuncts.0))
+                .map_err(|e| errors::NavigatorError::Clingo(e)),
+        }
     }
 
-    pub(crate)fn or_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>) {
-        // TODO: check if well-formed symbol
-        delta.for_each(|f| {
-            let s = f.to_string();
-            match s.starts_with("~") {
-                true => self.route.0.push(s[1..].to_string()),
-                _ => self.route.0.push(format!("not {}", s)),
-            };
-        });
+    pub(crate) fn delta<S: ToString>(&mut self, mut delta: impl Iterator<Item = S>) {
+        let mut con = true;
+        while let Some(token) = delta.next().map(|s| s.to_string()) {
+            match token == "&" {
+                true => {
+                    con = true;
+                    self.route = format!("{} {token}", self.route);
+                    continue;
+                }
+                _ => match token == "|" {
+                    true => {
+                        con = false;
+                        self.route = format!("{} {token}", self.route);
+                        continue;
+                    }
+                    _ => {
+                        let (symbol, exc) = match token.starts_with('~') {
+                            true => (token[1..].to_owned(), true),
+                            _ => (token.clone(), false),
+                        };
+                        match parse(&symbol).as_ref() {
+                            Some(sym) => match self.literals.get(sym) {
+                                Some(lit) => {
+                                    self.route = format!("{} {}", self.route, token.clone());
+                                    if con {
+                                        match exc {
+                                            true => self.conjuncts.0.push(lit.negate()),
+                                            _ => self.conjuncts.0.push(*lit),
+                                        }
+                                        self.conjuncts.1.push(FacetRepr(token))
+                                    } else {
+                                        self.disjuncts.push(FacetRepr(token))
+                                    }
+                                }
+                                _ => {
+                                    eprintln!("ignoring unknown symbol: {symbol}");
+                                    continue;
+                                }
+                            },
+                            _ => {
+                                eprintln!("ignoring invalid input: {token}");
+                                continue;
+                            }
+                        }
+                    }
+                },
+            }
+        }
     }
 }
 
+#[allow(unused)]
 pub enum Navigation {
     And(Navigator),
     AndOr(Navigator),
+}
+impl Navigation {
+    pub fn expose(&mut self) -> &mut Navigator {
+        match self {
+            Self::And(nav) | Self::AndOr(nav) => nav,
+        }
+    }
 }
 
 pub trait Essential {
@@ -149,244 +224,383 @@ pub trait Essential {
     fn route_repr(&self);
     /// Clears current route, setting route to empty route.
     fn clear(&mut self) -> Result<()>;
-    /// Activates all facets in `delta` conjunctively.
-    fn and_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>);
-    /// Activates all facets in `delta` disjunctively.
-    fn or_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>);
+    /// Activates all facets in `delta`.
+    fn delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>);
     /// Enumerate `n` answer sets under current route conjunctively extended by `peek_on`.
     fn solutions<S: ToString>(&mut self, n: usize, peek_on: impl Iterator<Item = S>) -> Result<()>;
+    /// Enumerate `n` answer sets under current route conjunctively extended by `peek_on`, while
+    /// hiding atoms that are no facets.
+    fn solutions_sharp<S: ToString>(
+        &mut self,
+        n: usize,
+        peek_on: impl Iterator<Item = S>,
+        targets: Option<&[String]>,
+    ) -> Result<()>;
 }
 impl Essential for Navigation {
     fn route_repr(&self) {
         match &self {
-            Self::And(nav) => {
-                print!("& ");
-                nav.route.1.iter().for_each(|f| {
-                    match f.get_integer() > 0 {
-                        true => nav
-                            .literals
-                            .iter()
-                            .find(|(_, v)| *v == f)
-                            .map(|(k, _)| print!("{} ", k.to_string())),
-                        _ => nav
-                            .literals
-                            .iter()
-                            .find(|(_, v)| **v == f.negate())
-                            .map(|(k, _)| print!("~{} ", k.to_string())),
-                    };
-                });
-            }
-            Self::AndOr(nav) => {
-                print!("| ");
-                nav.route
-                    .0
-                    .iter()
-                    .for_each(|f| match f.starts_with("not ") {
-                        true => print!("~{} ", &f[4..]),
-                        _ => print!("{} ", f),
-                    });
-                print!("& ");
-                nav.route.1.iter().for_each(|f| {
-                    match f.get_integer() > 0 {
-                        true => nav
-                            .literals
-                            .iter()
-                            .find(|(_, v)| *v == f)
-                            .map(|(k, _)| print!("{} ", k.to_string())),
-                        _ => nav
-                            .literals
-                            .iter()
-                            .find(|(_, v)| **v == f.negate())
-                            .map(|(k, _)| print!("~{} ", k.to_string())),
-                    };
-                });
-            }
+            Self::And(nav) | Self::AndOr(nav) => print!("{}", nav.route),
         }
     }
+
     fn clear(&mut self) -> Result<()> {
         match self {
             Self::And(nav) => {
-                nav.route.1.clear();
+                nav.conjuncts.0.clear();
+                nav.conjuncts.1.clear();
+                nav.route.clear();
                 Ok(())
             }
             Self::AndOr(nav) => {
-                let disjunctive = !nav.route.0.is_empty();
-                nav.route.0.clear();
-                nav.route.1.clear();
-                nav.assume(disjunctive)
+                nav.conjuncts.0.clear();
+                nav.conjuncts.1.clear();
+                nav.disjuncts.clear();
+                nav.route.clear();
+                nav.assume()
             }
         }
     }
-    fn and_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>) {
+
+    fn delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>) {
         match self {
-            Self::And(nav) | Self::AndOr(nav) => nav.and_delta(delta),
+            Self::And(nav) | Self::AndOr(nav) => nav.delta(delta),
         }
     }
-    fn or_delta<S: ToString>(&mut self, delta: impl Iterator<Item = S>) {
-        match self {
-            Self::And(nav) | Self::AndOr(nav) => nav.or_delta(delta),
-        }
-    }
+
     fn solutions<S: ToString>(&mut self, n: usize, peek_on: impl Iterator<Item = S>) -> Result<()> {
         match self {
             Self::And(nav) => {
-                let mut route = peek_on
-                    .map(|f| {
-                        let s = f.to_string();
-                        match s.starts_with("~") {
-                            true => parse(&s[1..])
-                                .map(|symbol| nav.literals.get(&symbol).map(|l| l.negate()))
-                                .flatten(),
-                            _ => parse(&s)
-                                .map(|symbol| nav.literals.get(&symbol))
-                                .flatten()
-                                .copied(),
-                        }
-                    })
-                    .flatten()
-                    .collect::<Vec<_>>();
-                route.extend(nav.route.1.clone());
+                let mut route = read_peek_on(peek_on, nav);
+                route.extend(nav.conjuncts.0.clone());
 
-                let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
-                let mut i = 1;
-
-                match n == 0 {
-                    true => {
-                        while let Ok(Some(answer_set)) = handle.model() {
-                            println!("Solution {:?}: ", i);
-                            let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                            atoms.iter().for_each(|atom| {
-                                print!("{} ", atom.to_string());
-                            });
-                            println!();
-
-                            i += 1;
-                            handle.resume()?;
-                        }
-                    }
-                    _ => {
-                        while let Ok(Some(answer_set)) = handle.model() {
-                            println!("Solution {:?}: ", i);
-                            let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                            atoms.iter().for_each(|atom| {
-                                print!("{} ", atom.to_string());
-                            });
-                            println!();
-
-                            i += 1;
-                            if i > n {
-                                break;
-                            }
-                            handle.resume()?;
-                        }
-                    }
-                }
-
-                println!("found {:?}", i - 1);
-
-                return handle
-                    .close()
-                    .map_err(|e| errors::NavigatorError::Clingo(e));
+                output_answer_sets(nav, &route, n)
             }
             Self::AndOr(nav) => {
-                let route = peek_on
-                    .map(|f| {
-                        let s = f.to_string();
-                        match s.starts_with("~") {
-                            true => parse(&s[1..])
-                                .map(|symbol| nav.literals.get(&symbol).map(|l| l.negate()))
-                                .flatten(),
-                            _ => parse(&s)
-                                .map(|symbol| nav.literals.get(&symbol))
-                                .flatten()
-                                .copied(),
-                        }
-                    })
-                    .flatten()
-                    .collect::<Vec<_>>();
+                let route = read_peek_on(peek_on, nav);
 
-                nav.assume(!nav.route.0.is_empty())?;
+                nav.assume()?;
 
-                let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
-                let mut i = 1;
+                output_answer_sets(nav, &route, n)
+            }
+        }
+    }
 
-                match n == 0 {
-                    true => {
-                        while let Ok(Some(answer_set)) = handle.model() {
-                            println!("Solution {:?}: ", i);
-                            let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                            atoms.iter().for_each(|atom| {
-                                print!("{} ", atom.to_string());
-                            });
-                            println!();
+    fn solutions_sharp<S: ToString>(
+        &mut self,
+        n: usize,
+        peek_on: impl Iterator<Item = S>,
+        targets: Option<&[String]>,
+    ) -> Result<()> {
+        match self {
+            Self::And(nav) => {
+                let mut route = read_peek_on(peek_on, nav);
+                route.extend(nav.conjuncts.0.clone());
 
-                            i += 1;
-                            handle.resume()?;
-                        }
-                    }
-                    _ => {
-                        while let Ok(Some(answer_set)) = handle.model() {
-                            println!("Solution {:?}: ", i);
-                            let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                            atoms.iter().for_each(|atom| {
-                                print!("{} ", atom.to_string());
-                            });
-                            println!();
+                output_answer_sets_sharp(nav, &route, n, targets)
+            }
+            Self::AndOr(nav) => {
+                let route = read_peek_on(peek_on, nav);
 
-                            i += 1;
-                            if i > n {
-                                break;
-                            }
-                            handle.resume()?;
-                        }
-                    }
-                }
+                nav.assume()?;
 
-                println!("found {:?}", i - 1);
-
-                return handle
-                    .close()
-                    .map_err(|e| errors::NavigatorError::Clingo(e));
+                output_answer_sets_sharp(nav, &route, n, targets)
             }
         }
     }
 }
 
+fn output_answer_sets(nav: &mut Navigator, route: &[SolverLiteral], n: usize) -> Result<()> {
+    let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
+    let mut i = 1;
+
+    match n == 0 {
+        true => {
+            while let Ok(Some(answer_set)) = handle.model() {
+                println!("Solution {:?}: ", i);
+                let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                atoms.iter().for_each(|atom| {
+                    print!("{} ", atom.to_string());
+                });
+                println!();
+
+                i += 1;
+                handle.resume()?;
+            }
+        }
+        _ => {
+            while let Ok(Some(answer_set)) = handle.model() {
+                println!("Solution {:?}: ", i);
+                let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                atoms.iter().for_each(|atom| {
+                    print!("{} ", atom.to_string());
+                });
+                println!();
+
+                i += 1;
+                if i > n {
+                    break;
+                }
+                handle.resume()?;
+            }
+        }
+    }
+
+    println!("found {:?}", i - 1);
+
+    return handle
+        .close()
+        .map_err(|e| errors::NavigatorError::Clingo(e));
+}
+
+fn output_answer_sets_sharp(
+    nav: &mut Navigator,
+    route: &[SolverLiteral],
+    n: usize,
+    targets: Option<&[String]>,
+) -> Result<()> {
+    let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
+    let mut i = 1;
+
+    if let Some(filter_on) = targets {
+        match n == 0 {
+            true => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    atoms
+                        .iter()
+                        .map(|atom| atom.to_string())
+                        .filter(|atom| filter_on.contains(atom))
+                        .for_each(|atom| {
+                            ONCE.call_once(|| {
+                                println!("\nSolution {:?}: ", i);
+                                i += 1;
+                            });
+                            print!("{atom} ");
+                        });
+                }
+
+                handle.resume()?;
+            }
+            _ => {
+                while let Ok(Some(answer_set)) = handle.model() {
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    println!("Solution {:?}: ", i);
+                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                    atoms
+                        .iter()
+                        .map(|atom| atom.to_string())
+                        .filter(|atom| filter_on.contains(atom))
+                        .for_each(|atom| {
+                            ONCE.call_once(|| {
+                                println!("\nSolution {:?}: ", i);
+                                i += 1;
+                            });
+                            print!("{atom} ");
+                        });
+
+                    if i > n {
+                        break;
+                    }
+
+                    handle.resume()?;
+                }
+            }
+        }
+
+        println!("found {:?}", i - 1);
+
+        return handle
+            .close()
+            .map_err(|e| errors::NavigatorError::Clingo(e));
+    } else {
+        output_answer_sets(nav, route, n)
+    }
+}
+
+/// Returns answer set count.
+/// if `upper_bound` > 0, then 0 <= return < `upper_bound` + 1  
+pub(crate) fn answer_set_count(
+    nav: &mut Navigator,
+    route: &[SolverLiteral],
+    upper_bound: usize,
+) -> Result<usize> {
+    let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
+    let mut i = 0;
+
+    match upper_bound == 0 {
+        true => {
+            while let Ok(Some(_)) = handle.model() {
+                i += 1;
+                handle.resume()?;
+            }
+        }
+        _ => {
+            while let Ok(Some(_)) = handle.model() {
+                i += 1;
+                if i > upper_bound {
+                    break;
+                }
+                handle.resume()?;
+            }
+        }
+    }
+
+    handle
+        .close()
+        .map_err(|e| errors::NavigatorError::Clingo(e))?;
+
+    Ok(i)
+}
+
+fn read_peek_on<S: ToString>(
+    peek_on: impl Iterator<Item = S>,
+    nav: &Navigator,
+) -> Vec<SolverLiteral> {
+    peek_on
+        .map(|f| {
+            let s = f.to_string();
+            match s.starts_with("~") {
+                true => parse(&s[1..])
+                    .map(|symbol| nav.literals.get(&symbol).map(|l| l.negate()))
+                    .flatten(),
+                _ => parse(&s)
+                    .map(|symbol| nav.literals.get(&symbol))
+                    .flatten()
+                    .copied(),
+            }
+        })
+        .flatten()
+        .collect::<Vec<_>>()
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /*
     #[test]
     fn startup() {
-        assert!(Navigation::new("a;b. c;d :- b. e.", vec!["0".to_string()]).is_ok());
-        assert!(Navigation::new("a;;b. c;d :- b. e.", vec!["0".to_string()]).is_err());
-        assert!(Navigation::new("a;b. c;d :- b. e.", vec![]).is_ok());
+        let nav = Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()]);
+        assert!(nav.is_ok());
     }
 
     #[test]
-    fn and_clear() -> Result<()> {
-        let mut nav = Navigation::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
-        let delta = vec!["b".to_owned(), "~c".to_owned()];
-        nav.and_delta(delta.iter())?;
-        nav.solutions(0, std::iter::empty())?;
+    fn and_health() -> Result<()> {
+        let nav = Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
+        let mut anav = Navigation::And(nav);
 
-        nav.clear()?;
+        let delta = "b & ~c".split(" ");
+        anav.delta(delta);
+        println!();
+        anav.route_repr();
+        println!();
+        anav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        anav.clear()?;
 
-        let delta = vec!["~a".to_owned()];
-        nav.and_delta(delta.iter())?;
-        nav.solutions(0, std::iter::empty())?;
+        let delta = "~a".split(" ");
+        anav.delta(delta);
+        println!();
+        anav.route_repr();
+        println!();
+        anav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        anav.clear()?;
 
-        nav.clear()?;
-
-        let delta = vec!["a".to_owned(), "b".to_owned()];
-        nav.and_delta(delta.iter())?;
-        nav.solutions(0, std::iter::empty())?;
+        let delta = "a & b".split(" ");
+        anav.delta(delta);
+        println!();
+        anav.route_repr();
+        println!();
+        anav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        anav.clear()?;
 
         Ok(())
     }
 
+    #[test]
+    fn andor_health() -> Result<()> {
+        let nav = Navigator::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
+        let mut aonav = Navigation::AndOr(nav);
+
+        let delta = "b | ~c".split(" ");
+        //let delta = "a | d | c".split(" ");
+        //let delta = "a | ~b".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+
+        let delta = "~b | c".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+
+        let delta = "a | d".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+
+        let delta = "a & c | d".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+
+        let delta = "a & c | d | a".split(" ");
+        aonav.delta(delta);
+        println!();
+        aonav.route_repr();
+        println!();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        println!();
+        aonav.clear()?;
+
+        //aonav.route_repr();
+        //println!();
+        //aonav.solutions(0, std::iter::empty::<String>())?;
+        //println!();
+        //aonav.clear()?;
+
+        /*
+        let delta = "~a".split(" ");
+        aonav.delta(delta);
+        aonav.route_repr();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        aonav.clear()?;
+
+        let delta = "a | b".split(" ");
+        aonav.delta(delta);
+        aonav.route_repr();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        aonav.clear()?;
+
+        let delta = "~c & a | b | ~a | ~b & d".split(" ");
+        aonav.delta(delta);
+        aonav.route_repr();
+        aonav.solutions(0, std::iter::empty::<String>())?;
+        aonav.clear()?;
+        */
+
+        Ok(())
+    }
+
+    /*
     #[test]
     fn or_clear() -> Result<()> {
         let mut nav = Navigation::new("a;b. c;d :- b. e.", vec!["0".to_string()])?;
