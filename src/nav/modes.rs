@@ -148,7 +148,7 @@ impl Guide for Mode {
                     if count == ub {
                         return Some((format!("~{sym}"), ln));
                     }
-                    if count <= curr {
+                    if curr <= count {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -161,7 +161,7 @@ impl Guide for Mode {
                     if count == ub {
                         return Some((sym.to_string(), *l));
                     }
-                    if count <= curr {
+                    if curr <= count {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
@@ -177,7 +177,7 @@ impl Guide for Mode {
                     let ln = l.negate();
                     active.push(ln);
                     let count = answer_set_count(nav, &active, curr).ok()?;
-                    if count <= curr {
+                    if curr <= count {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -185,7 +185,7 @@ impl Guide for Mode {
 
                     active.push(*l);
                     let count = answer_set_count(nav, &active, curr).ok()?;
-                    if count <= curr {
+                    if curr <= count {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
@@ -203,7 +203,7 @@ impl Guide for Mode {
                     let ln = l.negate();
                     active.push(ln);
                     let count = answer_set_count(nav, &active, curr).ok()?;
-                    if count <= curr {
+                    if curr <= count {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -211,7 +211,7 @@ impl Guide for Mode {
 
                     active.push(*l);
                     let count = answer_set_count(nav, &active, curr).ok()?;
-                    if count <= curr {
+                    if curr <= count {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
