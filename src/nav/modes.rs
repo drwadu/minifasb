@@ -175,6 +175,8 @@ impl Guide for Mode {
                 for sym in fs {
                     let l = unsafe { lits.get(&sym).unwrap_unchecked() };
                     let ln = l.negate();
+                    println!("bla");
+                    
                     active.push(ln);
                     let count = answer_set_count(nav, &active, curr).ok()?;
                     if curr <= count {
@@ -182,6 +184,7 @@ impl Guide for Mode {
                         f = Some((format!("~{sym}"), ln));
                     }
                     active.pop();
+                    dbg!(&f,curr);
 
                     active.push(*l);
                     let count = answer_set_count(nav, &active, curr).ok()?;
@@ -191,6 +194,7 @@ impl Guide for Mode {
                     }
                     active.pop();
                     dbg!(&f,curr);
+
                 }
 
                 f
