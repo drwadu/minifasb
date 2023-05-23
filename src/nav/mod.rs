@@ -161,13 +161,13 @@ impl Navigator {
             match token == "&" {
                 true => {
                     con = true;
-                    self.route = format!("{}{token}", self.route);
+                    self.route = format!("{} {token}", self.route);
                     continue;
                 }
                 _ => match token == "|" {
                     true => {
                         con = false;
-                        self.route = format!("{}{token}", self.route);
+                        self.route = format!("{} {token}", self.route);
                         continue;
                     }
                     _ => {
