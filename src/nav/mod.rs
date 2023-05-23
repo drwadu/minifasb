@@ -211,6 +211,13 @@ pub enum Navigation {
     And(Navigator),
     AndOr(Navigator),
 }
+impl Navigation {
+    pub fn expose(&mut self) -> &mut Navigator {
+        match self {
+            Self::And(nav) | Self::AndOr(nav) => nav,
+        }
+    }
+}
 
 pub trait Essential {
     /// Pretty prints route as `| f_0 ... f_n & f_n+1 ... f_m`.
