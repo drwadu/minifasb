@@ -42,7 +42,7 @@ impl Guide for Mode {
                 .next()
                 .and_then(|f| Some((f.to_string(), *unsafe { lits.get(&f).unwrap_unchecked() }))),
             Self::MaxWeighted(Weight::FacetCounting) => {
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (fs.len(), None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (fs.len()-1, None);
                 for sym in fs {
                     let l = unsafe { lits.get(&sym).unwrap_unchecked() };
                     active.push(*l);
@@ -107,7 +107,7 @@ impl Guide for Mode {
             }
             Self::MinWeighted(Weight::FacetCounting) => {
                 let ub = fs.len() - 1;
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (ub, None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (1, None);
                 for sym in fs {
                     let l = unsafe { lits.get(&sym).unwrap_unchecked() };
 
