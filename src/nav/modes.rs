@@ -50,7 +50,7 @@ impl Guide for Mode {
                     if count == 1 {
                         return Some((sym.to_string(), *l));
                     }
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
@@ -64,12 +64,11 @@ impl Guide for Mode {
                     if count == 1 {
                         return Some((format!("~{sym}"), ln));
                     }
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
                     active.pop();
-                    dbg!(&f, curr);
                 }
 
                 f
@@ -83,7 +82,7 @@ impl Guide for Mode {
                     if count == 1 {
                         return Some((sym.to_string(), *l));
                     }
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
@@ -95,7 +94,7 @@ impl Guide for Mode {
                     if count == 1 {
                         return Some((format!("~{sym}"), ln));
                     }
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -115,7 +114,7 @@ impl Guide for Mode {
                     if count == 1 {
                         return Some((sym.to_string(), *l));
                     }
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
@@ -127,7 +126,7 @@ impl Guide for Mode {
                     if count == 1 {
                         return Some((format!("~{sym}"), ln));
                     }
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
