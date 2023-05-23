@@ -190,7 +190,7 @@ impl Guide for Mode {
                         f = Some((sym.to_string(), *l));
                     }
                     active.pop();
-
+                    dbg!(&f,curr);
                 }
 
                 f
