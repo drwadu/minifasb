@@ -76,7 +76,7 @@ impl Guide for Mode {
                 f
             }
             Self::MaxWeighted(Weight::AnswerSetCounting) => {
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (usize::MAX-1, None);
                 for sym in fs {
                     let l = unsafe { lits.get(&sym).unwrap_unchecked() };
                     active.push(*l);
@@ -142,7 +142,7 @@ impl Guide for Mode {
                 f
             }
             Self::MinWeighted(Weight::AnswerSetCounting) => {
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (usize::MAX-1, None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
                 for sym in fs {
                     let l = unsafe { lits.get(&sym).unwrap_unchecked() };
                     let ln = l.negate();
