@@ -14,7 +14,6 @@ pub trait Guide {
     fn step(&mut self, nav: &mut Navigator) -> Option<(String, SolverLiteral)>;
 }
 impl Guide for Mode {
-    // TODO: only for AND
     fn step(&mut self, nav: &mut Navigator) -> Option<(String, SolverLiteral)> {
         let mut active = nav.conjuncts.0.clone();
         let bc = consequences(Consequences::Brave, nav, &active)?;
@@ -178,7 +177,7 @@ impl Guide for Mode {
                     let ln = l.negate();
                     active.push(ln);
                     let count = answer_set_count(nav, &active, curr).ok()?;
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -186,7 +185,7 @@ impl Guide for Mode {
 
                     active.push(*l);
                     let count = answer_set_count(nav, &active, curr).ok()?;
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
@@ -204,7 +203,7 @@ impl Guide for Mode {
                     let ln = l.negate();
                     active.push(ln);
                     let count = answer_set_count(nav, &active, curr).ok()?;
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -212,7 +211,7 @@ impl Guide for Mode {
 
                     active.push(*l);
                     let count = answer_set_count(nav, &active, curr).ok()?;
-                    if curr <= count {
+                    if count <= curr {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
