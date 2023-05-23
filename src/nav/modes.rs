@@ -171,11 +171,10 @@ impl Guide for Mode {
                 f
             }
             Self::MinWeighted(Weight::AnswerSetCounting) => {
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (usize::MAX-1, None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
                 for sym in fs {
                     let l = unsafe { lits.get(&sym).unwrap_unchecked() };
                     let ln = l.negate();
-                    println!("bla");
                     
                     active.push(ln);
                     let count = answer_set_count(nav, &active, curr).ok()?;
@@ -184,7 +183,6 @@ impl Guide for Mode {
                         f = Some((format!("~{sym}"), ln));
                     }
                     active.pop();
-                    dbg!(&f,curr);
 
                     active.push(*l);
                     let count = answer_set_count(nav, &active, curr).ok()?;
@@ -193,15 +191,13 @@ impl Guide for Mode {
                         f = Some((sym.to_string(), *l));
                     }
                     active.pop();
-                    dbg!(&f,curr);
-
                 }
 
                 f
             }
             Self::MinWeighted(Weight::SupportedModelCounting) => {
                 eprintln!("ensure --supp-models flag was specified at startup.");
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (usize::MAX-1, None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
                 for sym in fs {
                     let l = unsafe { lits.get(&sym).unwrap_unchecked() };
                     let ln = l.negate();
