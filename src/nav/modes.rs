@@ -98,7 +98,7 @@ impl Guide for Mode {
                         f = Some((format!("~{sym}"), ln));
                     }
                     active.pop();
-
+                    dbg!(&f,curr);
                 }
 
                 f
