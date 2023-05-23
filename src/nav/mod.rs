@@ -433,6 +433,7 @@ pub(crate) fn answer_set_count(
             while let Ok(_) = handle.model() {
                 i += 1;
                 handle.resume()?;
+                dbg!(i);
             }
         }
         _ => {
@@ -442,6 +443,7 @@ pub(crate) fn answer_set_count(
                     break;
                 }
                 handle.resume()?;
+                dbg!(i);
             }
         }
     }
