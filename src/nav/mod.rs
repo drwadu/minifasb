@@ -430,20 +430,18 @@ pub(crate) fn answer_set_count(
 
     match upper_bound == 0 {
         true => {
-            while let Ok(_) = handle.model() {
+            while let Ok(Some(_)) = handle.model() {
                 i += 1;
                 handle.resume()?;
-                dbg!(i);
             }
         }
         _ => {
-            while let Ok(_) = handle.model() {
+            while let Ok(Some(_)) = handle.model() {
                 i += 1;
                 if i > upper_bound {
                     break;
                 }
                 handle.resume()?;
-                dbg!(i);
             }
         }
     }
