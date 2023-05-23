@@ -103,37 +103,6 @@ impl Guide for Mode {
 
                 f
             }
-            Self::MaxWeighted(Weight::SupportedModelCounting) => {
-                eprintln!("ensure --supp-models flag was specified at startup.");
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
-                for sym in fs {
-                    let l = unsafe { lits.get(&sym).unwrap_unchecked() };
-                    active.push(*l);
-                    let count = answer_set_count(nav, &active, curr).ok()?;
-                    if count == 1 {
-                        return Some((sym.to_string(), *l));
-                    }
-                    if count <= curr {
-                        curr = count;
-                        f = Some((sym.to_string(), *l));
-                    }
-                    active.pop();
-
-                    let ln = l.negate();
-                    active.push(ln);
-                    let count = answer_set_count(nav, &active, curr).ok()?;
-                    if count == 1 {
-                        return Some((format!("~{sym}"), ln));
-                    }
-                    if count <= curr {
-                        curr = count;
-                        f = Some((format!("~{sym}"), ln));
-                    }
-                    active.pop();
-                }
-
-                f
-            }
             Self::MinWeighted(Weight::FacetCounting) => {
                 let ub = fs.len() - 1;
                 let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (ub, None);
@@ -191,32 +160,6 @@ impl Guide for Mode {
                         f = Some((sym.to_string(), *l));
                     }
                     active.pop();
-                }
-
-                f
-            }
-            Self::MinWeighted(Weight::SupportedModelCounting) => {
-                eprintln!("ensure --supp-models flag was specified at startup.");
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
-                for sym in fs {
-                    let l = unsafe { lits.get(&sym).unwrap_unchecked() };
-                    let ln = l.negate();
-                    active.push(ln);
-                    let count = answer_set_count(nav, &active, curr).ok()?;
-                    if curr <= count {
-                        curr = count;
-                        f = Some((format!("~{sym}"), ln));
-                    }
-                    active.pop();
-
-                    active.push(*l);
-                    let count = answer_set_count(nav, &active, curr).ok()?;
-                    if curr <= count {
-                        curr = count;
-                        f = Some((sym.to_string(), *l));
-                    }
-                    active.pop();
-
                 }
 
                 f
