@@ -211,13 +211,6 @@ pub enum Navigation {
     And(Navigator),
     AndOr(Navigator),
 }
-impl Navigation {
-    pub fn expose(&mut self) -> &mut Navigator {
-        match self {
-            Self::And(nav) | Self::AndOr(nav) => nav,
-        }
-    }
-}
 
 pub trait Essential {
     /// Pretty prints route as `| f_0 ... f_n & f_n+1 ... f_m`.
@@ -236,6 +229,10 @@ pub trait Essential {
         peek_on: impl Iterator<Item = S>,
         targets: Option<&[String]>,
     ) -> Result<()>;
+    /// TODO
+    fn read_route<S: ToString>(&self, peek_on: impl Iterator<Item = S>) -> Vec<SolverLiteral>;
+    /// TODO
+    fn expose(&mut self) -> &mut Navigator;
 }
 impl Essential for Navigation {
     fn route_repr(&self) {
@@ -306,6 +303,32 @@ impl Essential for Navigation {
 
                 output_answer_sets_sharp(nav, &route, n, targets)
             }
+        }
+    }
+
+    fn read_route<S: ToString>(&self, peek_on: impl Iterator<Item = S>) -> Vec<SolverLiteral> {
+        match self {
+            Self::And(nav) | Self::AndOr(nav) => peek_on
+                .map(|f| {
+                    let s = f.to_string();
+                    match s.starts_with("~") {
+                        true => parse(&s[1..])
+                            .map(|symbol| nav.literals.get(&symbol).map(|l| l.negate()))
+                            .flatten(),
+                        _ => parse(&s)
+                            .map(|symbol| nav.literals.get(&symbol))
+                            .flatten()
+                            .copied(),
+                    }
+                })
+                .flatten()
+                .collect::<Vec<_>>(),
+        }
+    }
+
+    fn expose(&mut self) -> &mut Navigator {
+        match self {
+            Self::And(nav) | Self::AndOr(nav) => nav,
         }
     }
 }
@@ -384,7 +407,6 @@ fn output_answer_sets_sharp(
             }
             _ => {
                 while let Ok(Some(answer_set)) = handle.model() {
-                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                     println!("Solution {:?}: ", i);
                     let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                     atoms

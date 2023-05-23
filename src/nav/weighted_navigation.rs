@@ -1,4 +1,8 @@
-use super::faceted_navigation::{fs_stats, FacetedNavigation};
+use super::{
+    answer_set_count,
+    faceted_navigation::{fs_stats, FacetedNavigation},
+    Essential,
+};
 
 /// TODO
 pub fn count<S: ToString, T>(
@@ -26,13 +30,12 @@ pub trait WeightedNavigation<T> {
 #[derive(Debug, Clone)]
 pub enum Weight {
     AnswerSetCounting,
-    SupportedModelCounting,
     FacetCounting,
     BcCounting,
     CcCounting,
 }
 
-impl<T: FacetedNavigation> WeightedNavigation<T> for Weight {
+impl<T: FacetedNavigation + Essential> WeightedNavigation<T> for Weight {
     fn eval_sharp<S: ToString>(
         &mut self,
         nav: &mut T,
@@ -41,10 +44,8 @@ impl<T: FacetedNavigation> WeightedNavigation<T> for Weight {
         match self {
             Self::FacetCounting => fs_stats(nav, peek_on).and_then(|(_, _, fsc)| Some((fsc, None))),
             Self::AnswerSetCounting => {
-                todo!()
-            }
-            Self::SupportedModelCounting => {
-                todo!()
+                let route = nav.read_route(peek_on);
+                Some((answer_set_count(nav.expose(), &route, 0).ok()?, None)) // TODO
             }
             Self::BcCounting => fs_stats(nav, peek_on).and_then(|(bcc, _, _)| Some((bcc, None))),
             Self::CcCounting => fs_stats(nav, peek_on).and_then(|(_, ccc, _)| Some((ccc, None))),
