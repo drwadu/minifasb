@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use super::Navigator;
 
 /// TODO
+#[allow(unused)]
 pub fn bc(
     nav: &mut impl FacetedNavigation,
     peek_on: impl Iterator<Item = String>,
@@ -14,6 +15,7 @@ pub fn bc(
 }
 
 /// TODO
+#[allow(unused)]
 pub fn cc(
     nav: &mut impl FacetedNavigation,
     peek_on: impl Iterator<Item = String>,
@@ -22,6 +24,7 @@ pub fn cc(
 }
 
 /// TODO
+#[allow(unused)]
 pub fn fs<S: ToString>(
     nav: &mut impl FacetedNavigation,
     peek_on: impl Iterator<Item = S>,
@@ -30,6 +33,7 @@ pub fn fs<S: ToString>(
 }
 
 /// TODO
+#[allow(unused)]
 pub fn fs_stats<S: ToString>(
     nav: &mut impl FacetedNavigation,
     peek_on: impl Iterator<Item = S>,
@@ -94,14 +98,6 @@ impl FacetedNavigation for Navigation {
         &mut self,
         peek_on: impl Iterator<Item = S>,
     ) -> Option<Vec<Symbol>> {
-        //let (nav, route) = match self {
-        //    Self::And(nav) | Self::AndOr(nav) => {
-        //        let mut route = read_peek_on(peek_on, &nav);
-        //        route.extend(nav.conjuncts.0.clone());
-
-        //        (nav, route)
-        //    }
-        //};
         let (mut nav, route) = nav_route(self, peek_on);
 
         consequences(Consequences::Cautious, &mut nav, &route)
@@ -141,7 +137,7 @@ impl FacetedNavigation for Navigation {
     }
 }
 
-fn consequences(
+pub(crate) fn consequences(
     kind: impl BCCC,
     nav: &mut Navigator,
     route: &[SolverLiteral],
@@ -149,11 +145,11 @@ fn consequences(
     kind.consequences(nav, route)
 }
 
-enum Consequences {
+pub(crate) enum Consequences {
     Brave,
     Cautious,
 }
-trait BCCC {
+pub(crate) trait BCCC {
     fn consequences(&self, nav: &mut Navigator, route: &[SolverLiteral]) -> Option<Vec<Symbol>>;
 }
 impl BCCC for Consequences {

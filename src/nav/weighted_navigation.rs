@@ -24,14 +24,15 @@ pub trait WeightedNavigation<T> {
 }
 
 #[derive(Debug, Clone)]
-pub enum Sharp {
+pub enum Weight {
     AnswerSetCounting,
+    SupportedModelCounting,
     FacetCounting,
     BcCounting,
     CcCounting,
 }
 
-impl<T: FacetedNavigation> WeightedNavigation<T> for Sharp {
+impl<T: FacetedNavigation> WeightedNavigation<T> for Weight {
     fn eval_sharp<S: ToString>(
         &mut self,
         nav: &mut T,
@@ -40,6 +41,9 @@ impl<T: FacetedNavigation> WeightedNavigation<T> for Sharp {
         match self {
             Self::FacetCounting => fs_stats(nav, peek_on).and_then(|(_, _, fsc)| Some((fsc, None))),
             Self::AnswerSetCounting => {
+                todo!()
+            }
+            Self::SupportedModelCounting => {
                 todo!()
             }
             Self::BcCounting => fs_stats(nav, peek_on).and_then(|(bcc, _, _)| Some((bcc, None))),

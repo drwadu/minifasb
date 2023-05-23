@@ -1,5 +1,6 @@
 pub mod errors;
 pub mod faceted_navigation;
+pub mod modes;
 mod utils;
 pub mod weighted_navigation;
 
@@ -14,16 +15,19 @@ use std::sync::Once;
 static ONCE: Once = Once::new();
 
 /// Pretty prints route.
+#[allow(unused)]
 pub fn show_route(nav: &impl Essential) {
     nav.route_repr()
 }
 
 /// Clears current route, setting route to empty route.
+#[allow(unused)]
 pub fn clear_route(nav: &mut impl Essential) -> Result<()> {
     nav.clear()
 }
 
 /// Activates a facets according to specified `route`.
+#[allow(unused)]
 pub fn delta<S: ToString>(nav: &mut impl Essential, route: impl Iterator<Item = S>) {
     nav.delta(route)
 }
@@ -356,8 +360,6 @@ fn output_answer_sets_sharp(
             true => {
                 while let Ok(Some(answer_set)) = handle.model() {
                     let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-
-                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
                     atoms
                         .iter()
                         .map(|atom| atom.to_string())
@@ -407,6 +409,41 @@ fn output_answer_sets_sharp(
     } else {
         output_answer_sets(nav, route, n)
     }
+}
+
+/// Returns answer set count.
+/// if `upper_bound` > 0, then 0 <= return < `upper_bound` + 1  
+pub(crate) fn answer_set_count(
+    nav: &mut Navigator,
+    route: &[SolverLiteral],
+    upper_bound: usize,
+) -> Result<usize> {
+    let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
+    let mut i = 0;
+
+    match upper_bound == 0 {
+        true => {
+            while let Ok(_) = handle.model() {
+                i += 1;
+                handle.resume()?;
+            }
+        }
+        _ => {
+            while let Ok(_) = handle.model() {
+                i += 1;
+                if i > upper_bound {
+                    break;
+                }
+                handle.resume()?;
+            }
+        }
+    }
+
+    handle
+        .close()
+        .map_err(|e| errors::NavigatorError::Clingo(e))?;
+
+    Ok(i)
 }
 
 fn read_peek_on<S: ToString>(
