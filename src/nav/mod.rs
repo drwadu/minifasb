@@ -178,7 +178,7 @@ impl Navigator {
                         match parse(&symbol).as_ref() {
                             Some(sym) => match self.literals.get(sym) {
                                 Some(lit) => {
-                                    self.route = format!("{}{}", self.route, token.clone());
+                                    self.route = format!("{} {}", self.route, token.clone());
                                     if con {
                                         match exc {
                                             true => self.conjuncts.0.push(lit.negate()),
