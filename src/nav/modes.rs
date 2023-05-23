@@ -32,6 +32,9 @@ impl Guide for Mode {
             _ => bc,
         };
         let lits = nav.literals.clone();
+        if fs.is_empty() {
+            return None;
+        }
 
         match self {
             Self::GoalOriented => fs
