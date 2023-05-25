@@ -2,6 +2,7 @@
 
 pub mod lex;
 pub mod nav;
+pub mod lofo;
 //pub mod incidences;
 
 /// Parses facet.
