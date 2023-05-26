@@ -1,3 +1,4 @@
+/// TODO
 pub fn weighted_l_t_norm(
     bias: Option<f64>,
     inputs: impl Iterator<Item = f64>,
@@ -18,6 +19,7 @@ pub fn weighted_l_t_norm(
     }
 }
 
+/// TODO
 pub fn weighted_l_t_conorm(
     bias: Option<f64>,
     inputs: impl Iterator<Item = f64>,
@@ -38,6 +40,7 @@ pub fn weighted_l_t_conorm(
     }
 }
 
+/// TODO
 pub fn weighted_l_residuum(
     bias: Option<f64>,
     x: f64,
