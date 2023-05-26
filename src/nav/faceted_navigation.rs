@@ -105,6 +105,7 @@ impl FacetedNavigation for Navigation {
 
     fn facets<S: ToString>(&mut self, peek_on: impl Iterator<Item = S>) -> Option<HashSet<Symbol>> {
         let (mut nav, route) = nav_route(self, peek_on);
+        println!("{}", &nav.input.0);
 
         let bcs = consequences(Consequences::Brave, &mut nav, &route)?;
 
