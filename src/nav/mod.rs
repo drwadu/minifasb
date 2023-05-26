@@ -131,8 +131,8 @@ impl Navigator {
                         .collect::<Vec<_>>() // TODO: mäh
                         .join("\n")
                 );
-                println!("{:?}", &lp);
-                println!("{:?}", self.input.1.clone());
+                //println!("{:?}", &lp);
+                //println!("{:?}", self.input.1.clone());
 
                 let mut ctl = clingo::control(self.input.1.clone())?;
                 ctl.add("base", &[], &lp)?;
