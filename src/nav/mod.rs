@@ -156,6 +156,40 @@ impl Navigator {
     }
 
     pub(crate) fn delta<S: ToString>(&mut self, mut delta: impl Iterator<Item = S>) {
+        if let Some(token) = delta.next().map(|s| s.to_string()) {
+            let f = delta.next().map(|s| s.to_string()).unwrap_or("".to_owned());
+            let (symbol, exc) = match f.starts_with('~') {
+                true => (f[1..].to_owned(), true),
+                _ => (f.clone(), false),
+            };
+            match parse(&symbol).as_ref() {
+                Some(sym) => match self.literals.get(sym) {
+                    Some(lit) => {
+                        self.route = format!("{} {}", self.route, token.clone());
+                        match token.as_str() {
+                            "&" => {
+                                match exc {
+                                    true => self.conjuncts.0.push(lit.negate()),
+                                    _ => self.conjuncts.0.push(*lit),
+                                }
+                                self.conjuncts.1.push(FacetRepr(f))
+                            }
+                            "|" => self.disjuncts.push(FacetRepr(f)),
+                            _ => {
+                                eprintln!("ignoring invalid input: {token}");
+                            }
+                        }
+                    }
+                    _ => {
+                        eprintln!("ignoring unknown symbol: {symbol}");
+                    }
+                },
+                _ => {
+                    eprintln!("ignoring invalid input: {token}");
+                }
+            }
+        }
+        /*
         let mut con = true;
         while let Some(token) = delta.next().map(|s| s.to_string()) {
             match token == "&" {
@@ -203,6 +237,7 @@ impl Navigator {
                 },
             }
         }
+        */
     }
 }
 
