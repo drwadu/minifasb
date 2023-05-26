@@ -165,7 +165,7 @@ impl Navigator {
             match parse(&symbol).as_ref() {
                 Some(sym) => match self.literals.get(sym) {
                     Some(lit) => {
-                        self.route = format!("{} {}", self.route, token.clone());
+                        self.route = format!("{} {} {f}", self.route, token.clone());
                         match token.as_str() {
                             "&" => {
                                 match exc {
