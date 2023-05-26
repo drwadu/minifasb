@@ -54,6 +54,12 @@ pub fn enumerate_solutions_sharp<S: ToString>(
     nav.solutions_sharp(n, peek_on, targets)
 }
 
+/// TODO
+#[allow(unused)]
+pub fn update(nav: &mut impl Essential) -> Result<()> {
+    nav.update()
+}
+
 #[derive(Debug, Clone)]
 struct FacetRepr(String);
 
@@ -268,6 +274,8 @@ pub trait Essential {
     fn read_route<S: ToString>(&self, peek_on: impl Iterator<Item = S>) -> Vec<SolverLiteral>;
     /// TODO
     fn expose(&mut self) -> &mut Navigator;
+    /// TODO
+    fn update(&mut self) -> Result<()>;
 }
 impl Essential for Navigation {
     fn route_repr(&self) {
@@ -334,7 +342,7 @@ impl Essential for Navigation {
             Self::AndOr(nav) => {
                 let route = read_peek_on(peek_on, nav);
 
-                nav.assume()?;
+                //nav.assume()?;
 
                 output_answer_sets_sharp(nav, &route, n, targets)
             }
@@ -364,6 +372,13 @@ impl Essential for Navigation {
     fn expose(&mut self) -> &mut Navigator {
         match self {
             Self::And(nav) | Self::AndOr(nav) => nav,
+        }
+    }
+
+    fn update(&mut self) -> Result<()> {
+        match self {
+            Self::And(_) => Ok(()),
+            Self::AndOr(nav) => nav.assume(),
         }
     }
 }
