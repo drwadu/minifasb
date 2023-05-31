@@ -14,6 +14,12 @@ use std::sync::Once;
 
 static ONCE: Once = Once::new();
 
+/// Returns route as fasb string.
+#[allow(unused)]
+pub fn context(nav: &impl Essential) -> String {
+    nav.context()
+}
+
 /// Pretty prints route.
 #[allow(unused)]
 pub fn show_route(nav: &impl Essential) {
@@ -276,6 +282,8 @@ pub trait Essential {
     fn expose(&mut self) -> &mut Navigator;
     /// TODO
     fn update(&mut self) -> Result<()>;
+    /// TODO
+    fn context(&self) -> String;
 }
 impl Essential for Navigation {
     fn route_repr(&self) {
@@ -379,6 +387,12 @@ impl Essential for Navigation {
         match self {
             Self::And(_) => Ok(()),
             Self::AndOr(nav) => nav.assume(),
+        }
+    }
+
+    fn context(&self) -> String {
+        match self {
+            Self::And(nav) | Self::AndOr(nav) => nav.route.clone(),
         }
     }
 }
