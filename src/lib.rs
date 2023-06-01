@@ -2,6 +2,8 @@
 
 pub mod lex;
 pub mod nav;
+#[cfg(feature = "lnn")]
+pub mod lofo;
 //pub mod incidences;
 
 /// Parses facet.

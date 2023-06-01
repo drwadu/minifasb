@@ -14,6 +14,12 @@ use std::sync::Once;
 
 static ONCE: Once = Once::new();
 
+/// Returns route as fasb string.
+#[allow(unused)]
+pub fn context(nav: &impl Essential) -> String {
+    nav.context()
+}
+
 /// Pretty prints route.
 #[allow(unused)]
 pub fn show_route(nav: &impl Essential) {
@@ -52,6 +58,12 @@ pub fn enumerate_solutions_sharp<S: ToString>(
     targets: Option<&[String]>,
 ) -> Result<()> {
     nav.solutions_sharp(n, peek_on, targets)
+}
+
+/// TODO
+#[allow(unused)]
+pub fn update(nav: &mut impl Essential) -> Result<()> {
+    nav.update()
 }
 
 #[derive(Debug, Clone)]
@@ -156,6 +168,40 @@ impl Navigator {
     }
 
     pub(crate) fn delta<S: ToString>(&mut self, mut delta: impl Iterator<Item = S>) {
+        if let Some(token) = delta.next().map(|s| s.to_string()) {
+            let f = delta.next().map(|s| s.to_string()).unwrap_or("".to_owned());
+            let (symbol, exc) = match f.starts_with('~') {
+                true => (f[1..].to_owned(), true),
+                _ => (f.clone(), false),
+            };
+            match parse(&symbol).as_ref() {
+                Some(sym) => match self.literals.get(sym) {
+                    Some(lit) => {
+                        self.route = format!("{} {} {f}", self.route, token.clone());
+                        match token.as_str() {
+                            "&" => {
+                                match exc {
+                                    true => self.conjuncts.0.push(lit.negate()),
+                                    _ => self.conjuncts.0.push(*lit),
+                                }
+                                self.conjuncts.1.push(FacetRepr(f))
+                            }
+                            "|" => self.disjuncts.push(FacetRepr(f)),
+                            _ => {
+                                eprintln!("ignoring invalid input: {token}");
+                            }
+                        }
+                    }
+                    _ => {
+                        eprintln!("ignoring unknown symbol: {symbol}");
+                    }
+                },
+                _ => {
+                    eprintln!("ignoring invalid input: {token}");
+                }
+            }
+        }
+        /*
         let mut con = true;
         while let Some(token) = delta.next().map(|s| s.to_string()) {
             match token == "&" {
@@ -203,6 +249,7 @@ impl Navigator {
                 },
             }
         }
+        */
     }
 }
 
@@ -233,6 +280,10 @@ pub trait Essential {
     fn read_route<S: ToString>(&self, peek_on: impl Iterator<Item = S>) -> Vec<SolverLiteral>;
     /// TODO
     fn expose(&mut self) -> &mut Navigator;
+    /// TODO
+    fn update(&mut self) -> Result<()>;
+    /// TODO
+    fn context(&self) -> String;
 }
 impl Essential for Navigation {
     fn route_repr(&self) {
@@ -299,7 +350,7 @@ impl Essential for Navigation {
             Self::AndOr(nav) => {
                 let route = read_peek_on(peek_on, nav);
 
-                nav.assume()?;
+                //nav.assume()?;
 
                 output_answer_sets_sharp(nav, &route, n, targets)
             }
@@ -329,6 +380,19 @@ impl Essential for Navigation {
     fn expose(&mut self) -> &mut Navigator {
         match self {
             Self::And(nav) | Self::AndOr(nav) => nav,
+        }
+    }
+
+    fn update(&mut self) -> Result<()> {
+        match self {
+            Self::And(_) => Ok(()),
+            Self::AndOr(nav) => nav.assume(),
+        }
+    }
+
+    fn context(&self) -> String {
+        match self {
+            Self::And(nav) | Self::AndOr(nav) => nav.route.clone(),
         }
     }
 }
