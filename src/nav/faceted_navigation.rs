@@ -1,5 +1,5 @@
 use super::utils::ToHashSet;
-use super::{parse, Navigation, Essential};
+use super::{parse, Navigation};
 use clingo::{SolverLiteral, Symbol};
 use std::collections::HashSet;
 
@@ -112,6 +112,7 @@ impl FacetedNavigation for Navigation {
     ) -> Option<Vec<Symbol>> {
         let (mut nav, route) = nav_route(self, peek_on);
 
+        dbg!(&route);
         consequences(Consequences::Brave, &mut nav, &route)
     }
 
@@ -121,6 +122,7 @@ impl FacetedNavigation for Navigation {
     ) -> Option<Vec<Symbol>> {
         let (mut nav, route) = nav_route(self, peek_on);
 
+        dbg!(&route);
         consequences(Consequences::Cautious, &mut nav, &route)
     }
 
@@ -129,6 +131,7 @@ impl FacetedNavigation for Navigation {
 
         let bcs = consequences(Consequences::Brave, &mut nav, &route)?;
 
+        dbg!(&route);
         match !bcs.is_empty() {
             true => consequences(Consequences::Cautious, &mut nav, &route)
                 .as_ref()
@@ -143,6 +146,7 @@ impl FacetedNavigation for Navigation {
     ) -> Option<(usize, usize, usize)> {
         let (mut nav, route) = nav_route(self, peek_on);
 
+        dbg!(&route);
         let bcs = consequences(Consequences::Brave, &mut nav, &route)?;
         match !bcs.is_empty() {
             true => {

@@ -31,7 +31,9 @@ pub trait WeightedNavigation<T> {
 pub enum Weight {
     AnswerSetCounting,
     FacetCounting,
+    #[allow(unused)]
     BcCounting,
+    #[allow(unused)]
     CcCounting,
 }
 
