@@ -145,8 +145,6 @@ impl FacetedNavigation for Navigation {
     ) -> Option<(usize, usize, usize)> {
         let (mut nav, route) = nav_route(self, peek_on);
 
-        dbg!(&nav.route);
-        dbg!(&nav.input.0);
         let bcs = consequences(Consequences::Brave, &mut nav, &route)?;
         match !bcs.is_empty() {
             true => {
@@ -170,6 +168,7 @@ pub(crate) fn consequences(
     kind.consequences(nav, route)
 }
 
+#[derive(Debug)]
 pub(crate) enum Consequences {
     Brave,
     Cautious,
@@ -211,7 +210,7 @@ impl BCCC for Consequences {
             })
             .ok()?;
 
-        dbg!(&xs.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+        dbg!(&self, &xs.iter().map(|s| s.to_string()).collect::<Vec<_>>());
         Some(xs)
     }
 }
