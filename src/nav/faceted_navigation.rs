@@ -112,8 +112,6 @@ impl FacetedNavigation for Navigation {
     ) -> Option<Vec<Symbol>> {
         let (mut nav, route) = nav_route(self, peek_on);
 
-        dbg!(&route);
-        dbg!(&nav.input.0);
         consequences(Consequences::Brave, &mut nav, &route)
     }
 
@@ -123,8 +121,6 @@ impl FacetedNavigation for Navigation {
     ) -> Option<Vec<Symbol>> {
         let (mut nav, route) = nav_route(self, peek_on);
 
-        dbg!(&route);
-        dbg!(&nav.input.0);
         consequences(Consequences::Cautious, &mut nav, &route)
     }
 
@@ -215,6 +211,7 @@ impl BCCC for Consequences {
             })
             .ok()?;
 
+        dbg!(&xs.iter().map(|s| s.to_string()).collect::<Vec<_>>());
         Some(xs)
     }
 }
