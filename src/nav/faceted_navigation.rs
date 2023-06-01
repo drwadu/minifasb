@@ -129,8 +129,6 @@ impl FacetedNavigation for Navigation {
 
         let bcs = consequences(Consequences::Brave, &mut nav, &route)?;
 
-        dbg!(&route);
-        dbg!(&nav.input.0);
         match !bcs.is_empty() {
             true => consequences(Consequences::Cautious, &mut nav, &route)
                 .as_ref()
@@ -210,7 +208,13 @@ impl BCCC for Consequences {
             })
             .ok()?;
 
-        dbg!(&self, &xs.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+        dbg!(
+            &self,
+            &xs.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+            &nav.route,
+            &nav.conjuncts,
+            &nav.disjuncts
+        );
         Some(xs)
     }
 }
