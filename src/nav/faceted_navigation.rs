@@ -67,8 +67,6 @@ fn nav_route<S: ToString>(
             (nav, route)
         }
         Navigation::AndOr(nav) => {
-            nav.assume().expect("unknown error.");
-
             let route = peek_on
                 .map(|f| {
                     let s = f.to_string();
