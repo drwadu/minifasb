@@ -69,7 +69,7 @@ fn nav_route<S: ToString>(
         Navigation::AndOr(nav) => {
             nav.assume().expect("unknown error.");
 
-            let mut route = peek_on
+            let route = peek_on
                 .map(|f| {
                     let s = f.to_string();
                     match s.starts_with("~") {
@@ -84,7 +84,6 @@ fn nav_route<S: ToString>(
                 })
                 .flatten()
                 .collect::<Vec<_>>();
-            route.extend(nav.conjuncts.0.clone());
 
             (nav, route)
         }
