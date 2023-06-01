@@ -1,5 +1,5 @@
 use super::utils::ToHashSet;
-use super::{parse, Navigation};
+use super::{parse, Navigation, Essential};
 use clingo::{SolverLiteral, Symbol};
 use std::collections::HashSet;
 
@@ -46,7 +46,29 @@ fn nav_route<S: ToString>(
     peek_on: impl Iterator<Item = S>,
 ) -> (&mut Navigator, Vec<SolverLiteral>) {
     match state {
-        Navigation::And(nav) | Navigation::AndOr(nav) => {
+        Navigation::And(nav) => {
+            let mut route = peek_on
+                .map(|f| {
+                    let s = f.to_string();
+                    match s.starts_with("~") {
+                        true => parse(&s[1..])
+                            .map(|symbol| nav.literals.get(&symbol).map(|l| l.negate()))
+                            .flatten(),
+                        _ => parse(&s)
+                            .map(|symbol| nav.literals.get(&symbol))
+                            .flatten()
+                            .copied(),
+                    }
+                })
+                .flatten()
+                .collect::<Vec<_>>();
+            route.extend(nav.conjuncts.0.clone());
+
+            (nav, route)
+        }
+        Navigation::AndOr(nav) => {
+            nav.assume().expect("unknown error.");
+
             let mut route = peek_on
                 .map(|f| {
                     let s = f.to_string();
@@ -105,9 +127,6 @@ impl FacetedNavigation for Navigation {
 
     fn facets<S: ToString>(&mut self, peek_on: impl Iterator<Item = S>) -> Option<HashSet<Symbol>> {
         let (mut nav, route) = nav_route(self, peek_on);
-        println!("facets {}", &nav.route);
-        println!("facets {:?}", &nav.disjuncts);
-        println!("facets {:?}", &nav.conjuncts);
 
         let bcs = consequences(Consequences::Brave, &mut nav, &route)?;
 

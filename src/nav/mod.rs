@@ -143,8 +143,8 @@ impl Navigator {
                         .collect::<Vec<_>>() // TODO: mäh
                         .join("\n")
                 );
-                println!("{:?}", &lp);
-                println!("{:?}", self.input.1.clone());
+                //println!("{:?}", &lp);
+                //println!("{:?}", self.input.1.clone());
 
                 let mut ctl = clingo::control(self.input.1.clone())?;
                 ctl.add("base", &[], &lp)?;
@@ -350,7 +350,7 @@ impl Essential for Navigation {
             Self::AndOr(nav) => {
                 let route = read_peek_on(peek_on, nav);
 
-                //nav.assume()?;
+                nav.assume()?;
 
                 output_answer_sets_sharp(nav, &route, n, targets)
             }
