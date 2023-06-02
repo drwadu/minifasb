@@ -206,13 +206,6 @@ impl BCCC for Consequences {
             })
             .ok()?;
 
-        dbg!(
-            &self,
-            &xs.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
-            &nav.route,
-            &nav.conjuncts,
-            &nav.disjuncts
-        );
         Some(xs)
     }
 }
