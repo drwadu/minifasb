@@ -10,9 +10,6 @@ use errors::Result;
 
 use clingo::{Control, SolverLiteral, Symbol};
 use std::collections::{HashMap, HashSet};
-use std::sync::Once;
-
-static ONCE: Once = Once::new();
 
 /// Returns route as fasb string.
 #[allow(unused)]
@@ -55,9 +52,9 @@ pub fn enumerate_solutions_sharp<S: ToString>(
     nav: &mut impl Essential,
     n: usize,
     peek_on: impl Iterator<Item = S>,
-    targets: Option<&[String]>,
+    f: impl FnMut(&String) -> bool,
 ) -> Result<()> {
-    nav.solutions_sharp(n, peek_on, targets)
+    nav.solutions_sharp(n, peek_on, f)
 }
 
 /// TODO
@@ -201,55 +198,6 @@ impl Navigator {
                 }
             }
         }
-        /*
-        let mut con = true;
-        while let Some(token) = delta.next().map(|s| s.to_string()) {
-            match token == "&" {
-                true => {
-                    con = true;
-                    self.route = format!("{} {token}", self.route);
-                    continue;
-                }
-                _ => match token == "|" {
-                    true => {
-                        con = false;
-                        self.route = format!("{} {token}", self.route);
-                        continue;
-                    }
-                    _ => {
-                        let (symbol, exc) = match token.starts_with('~') {
-                            true => (token[1..].to_owned(), true),
-                            _ => (token.clone(), false),
-                        };
-                        match parse(&symbol).as_ref() {
-                            Some(sym) => match self.literals.get(sym) {
-                                Some(lit) => {
-                                    self.route = format!("{} {}", self.route, token.clone());
-                                    if con {
-                                        match exc {
-                                            true => self.conjuncts.0.push(lit.negate()),
-                                            _ => self.conjuncts.0.push(*lit),
-                                        }
-                                        self.conjuncts.1.push(FacetRepr(token))
-                                    } else {
-                                        self.disjuncts.push(FacetRepr(token))
-                                    }
-                                }
-                                _ => {
-                                    eprintln!("ignoring unknown symbol: {symbol}");
-                                    continue;
-                                }
-                            },
-                            _ => {
-                                eprintln!("ignoring invalid input: {token}");
-                                continue;
-                            }
-                        }
-                    }
-                },
-            }
-        }
-        */
     }
 }
 
@@ -274,7 +222,7 @@ pub trait Essential {
         &mut self,
         n: usize,
         peek_on: impl Iterator<Item = S>,
-        targets: Option<&[String]>,
+        f: impl FnMut(&String) -> bool,
     ) -> Result<()>;
     /// TODO
     fn read_route<S: ToString>(&self, peek_on: impl Iterator<Item = S>) -> Vec<SolverLiteral>;
@@ -338,21 +286,21 @@ impl Essential for Navigation {
         &mut self,
         n: usize,
         peek_on: impl Iterator<Item = S>,
-        targets: Option<&[String]>,
+        f: impl FnMut(&String) -> bool,
     ) -> Result<()> {
         match self {
             Self::And(nav) => {
                 let mut route = read_peek_on(peek_on, nav);
                 route.extend(nav.conjuncts.0.clone());
 
-                output_answer_sets_sharp(nav, &route, n, targets)
+                output_answer_sets_sharp(nav, &route, n, f)
             }
             Self::AndOr(nav) => {
                 let route = read_peek_on(peek_on, nav);
 
                 nav.assume()?;
 
-                output_answer_sets_sharp(nav, &route, n, targets)
+                output_answer_sets_sharp(nav, &route, n, f)
             }
         }
     }
@@ -444,64 +392,48 @@ fn output_answer_sets_sharp(
     nav: &mut Navigator,
     route: &[SolverLiteral],
     n: usize,
-    targets: Option<&[String]>,
+    mut f: impl FnMut(&String) -> bool,
 ) -> Result<()> {
     let mut handle = nav.ctl.fasb_solve(clingo::SolveMode::YIELD, &route)?;
     let mut i = 1;
 
-    if let Some(filter_on) = targets {
-        match n == 0 {
-            true => {
-                while let Ok(Some(answer_set)) = handle.model() {
-                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                    atoms
-                        .iter()
-                        .map(|atom| atom.to_string())
-                        .filter(|atom| filter_on.contains(atom))
-                        .for_each(|atom| {
-                            ONCE.call_once(|| {
-                                println!("\nSolution {:?}: ", i);
-                                i += 1;
-                            });
-                            print!("{atom} ");
-                        });
+    match n == 0 {
+        true => {
+            while let Ok(Some(answer_set)) = handle.model() {
+                println!("Solution {:?}: ", i);
+                let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                for atom in atoms.iter().map(|atom| atom.to_string()).filter(&mut f) {
+                    print!("{} ", atom);
                 }
+                println!();
 
+                i += 1;
                 handle.resume()?;
             }
-            _ => {
-                while let Ok(Some(answer_set)) = handle.model() {
-                    println!("Solution {:?}: ", i);
-                    let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
-                    atoms
-                        .iter()
-                        .map(|atom| atom.to_string())
-                        .filter(|atom| filter_on.contains(atom))
-                        .for_each(|atom| {
-                            ONCE.call_once(|| {
-                                println!("\nSolution {:?}: ", i);
-                                i += 1;
-                            });
-                            print!("{atom} ");
-                        });
-
-                    if i > n {
-                        break;
-                    }
-
-                    handle.resume()?;
+        }
+        _ => {
+            while let Ok(Some(answer_set)) = handle.model() {
+                println!("Solution {:?}: ", i);
+                let atoms = answer_set.symbols(clingo::ShowType::SHOWN)?;
+                for atom in atoms.iter().map(|atom| atom.to_string()).filter(&mut f) {
+                    print!("{} ", atom);
                 }
+                println!();
+
+                i += 1;
+                if i > n {
+                    break;
+                }
+                handle.resume()?;
             }
         }
-
-        println!("found {:?}", i - 1);
-
-        return handle
-            .close()
-            .map_err(|e| errors::NavigatorError::Clingo(e));
-    } else {
-        output_answer_sets(nav, route, n)
     }
+
+    println!("found {:?}", i - 1);
+
+    return handle
+        .close()
+        .map_err(|e| errors::NavigatorError::Clingo(e));
 }
 
 /// Returns answer set count.
