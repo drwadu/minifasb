@@ -99,7 +99,7 @@ impl Navigator {
         let start = Instant::now();
         ctl.ground(&[clingo::Part::new("base", vec![])?])?;
         #[cfg(feature = "verbose")]
-        eprintln!("grounding elapsed: {:?}", start.elapsed().as_millis());
+        eprintln!("grounding elapsed: {:?}", start.elapsed());
 
         let mut literals = HashMap::new();
         for atom in ctl.symbolic_atoms()?.iter()? {
