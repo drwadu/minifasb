@@ -304,7 +304,7 @@ impl Guide for Mode {
                     active.pop();
                 }
                 #[cfg(feature = "verbose")]
-                eprintln!("step elapsed: {:?}", start.elapsed().as_secs());
+                eprintln!("step elapsed: {:?}", start.elapsed());
 
                 f
             }
@@ -370,7 +370,7 @@ impl Guide for Mode {
                     }
                 }
                 #[cfg(feature = "verbose")]
-                eprintln!("step elapsed: {:?}", start.elapsed().as_secs());
+                eprintln!("step elapsed: {:?}", start.elapsed().as_millis());
 
                 *split_on = Some(curr);
 
@@ -413,7 +413,7 @@ impl Guide for Mode {
                     active.pop();
                 }
                 #[cfg(feature = "verbose")]
-                eprintln!("step elapsed: {:?}", start.elapsed().as_secs());
+                eprintln!("step elapsed: {:?}", start.elapsed().as_millis());
 
                 f
             }
@@ -469,7 +469,7 @@ impl Guide for Mode {
                 }
 
                 #[cfg(feature = "verbose")]
-                eprintln!("step elapsed: {:?}", start.elapsed().as_secs());
+                eprintln!("step elapsed: {:?}", start.elapsed());
 
                 *split_on = Some(curr);
 

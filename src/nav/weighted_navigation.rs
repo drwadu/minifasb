@@ -54,7 +54,7 @@ impl<T: FacetedNavigation + Essential> WeightedNavigation<T> for Weight {
                 let start = Instant::now();
                 let fc = fs_stats(nav, peek_on).and_then(|(_, _, fsc)| Some(fsc));
                 #[cfg(feature = "verbose")]
-                eprintln!("facet counting elapsed: {:?}", start.elapsed().as_secs());
+                eprintln!("facet counting elapsed: {:?}", start.elapsed().as_millis());
                 fc
             }
             Self::AnswerSetCounting => {
@@ -67,7 +67,7 @@ impl<T: FacetedNavigation + Essential> WeightedNavigation<T> for Weight {
                 #[cfg(feature = "verbose")]
                 eprintln!(
                     "answer set counting elapsed: {:?}",
-                    start.elapsed().as_secs()
+                    start.elapsed().as_millis()
                 );
                 count
             }
