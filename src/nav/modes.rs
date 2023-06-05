@@ -9,6 +9,7 @@ use super::faceted_navigation::{consequences, Consequences};
 #[cfg(feature = "verbose")]
 use std::time::Instant;
 
+#[allow(unused)]
 pub enum Mode {
     GoalOriented,
     MinWeighted(Weight),
@@ -18,20 +19,20 @@ pub trait Guide {
     fn step(
         &mut self,
         nav: &mut Navigator,
-        split_on: Option<usize>,
+        split_on: &mut Option<usize>,
     ) -> Option<(String, SolverLiteral)>;
     fn step_wrt(
         &mut self,
         nav: &mut Navigator,
         curr: &[String],
-        split_on: Option<usize>,
+        split_on: &mut Option<usize>,
     ) -> Option<(String, SolverLiteral)>;
 }
 impl Guide for Mode {
     fn step(
         &mut self,
         nav: &mut Navigator,
-        split_on: Option<usize>,
+        split_on: &mut Option<usize>,
     ) -> Option<(String, SolverLiteral)> {
         let mut active = nav.conjuncts.0.clone();
         let bc = consequences(Consequences::Brave, nav, &active)?;
@@ -113,7 +114,7 @@ impl Guide for Mode {
                         active.pop();
 
                         let ln = l.negate();
-                        let count_ = c - count;
+                        let count_ = *c - count;
                         if count_ == 1 {
                             return Some((format!("~{sym}"), ln));
                         }
@@ -149,6 +150,8 @@ impl Guide for Mode {
                         active.pop();
                     }
                 }
+
+                *split_on = Some(curr);
 
                 f
             }
@@ -204,7 +207,7 @@ impl Guide for Mode {
                         }
                         active.pop();
 
-                        let count_ = c - count;
+                        let count_ = *c - count;
                         if curr <= count_ {
                             curr = count_;
                             f = Some((sym.to_string(), *l));
@@ -233,6 +236,8 @@ impl Guide for Mode {
                     }
                 }
 
+                *split_on = Some(curr);
+
                 f
             }
             _ => todo!(),
@@ -243,7 +248,7 @@ impl Guide for Mode {
         &mut self,
         nav: &mut Navigator,
         curr: &[String],
-        split_on: Option<usize>,
+        split_on: &mut Option<usize>,
     ) -> Option<(String, SolverLiteral)> {
         let mut active = nav.conjuncts.0.clone();
         let fs = curr;
@@ -325,7 +330,7 @@ impl Guide for Mode {
                         active.pop();
 
                         let ln = l.negate();
-                        let count_ = c - count;
+                        let count_ = *c - count;
                         if count_ == 1 {
                             return Some((format!("~{sym}"), ln));
                         }
@@ -366,6 +371,8 @@ impl Guide for Mode {
                 }
                 #[cfg(feature = "verbose")]
                 eprintln!("step elapsed: {:?}", start.elapsed().as_secs());
+
+                *split_on = Some(curr);
 
                 f
             }
@@ -429,7 +436,7 @@ impl Guide for Mode {
                         }
                         active.pop();
 
-                        let count_ = c - count;
+                        let count_ = *c - count;
                         if curr <= count_ {
                             curr = count_;
                             f = Some((sym.to_string(), *l));
@@ -463,6 +470,8 @@ impl Guide for Mode {
 
                 #[cfg(feature = "verbose")]
                 eprintln!("step elapsed: {:?}", start.elapsed().as_secs());
+
+                *split_on = Some(curr);
 
                 f
             }

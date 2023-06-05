@@ -37,8 +37,8 @@ impl Lnn {
             .values_mut()
             .filter(|n| n.f == Activation::Proposition)
             .for_each(|n| {
-                let c = unsafe { count(&mut w, wrt, [&n.repr].iter()).unwrap_unchecked() } as f64
-                    / ovr;
+                let c =
+                    unsafe { count(&mut w, wrt, [&n.repr].iter()).unwrap_unchecked() } as f64 / ovr;
                 self.update_state(n.repr.clone(), (c, c));
                 self.update_state(format!("~{}", n.repr), (1.0 - c, 1.0 - c))
             });
@@ -234,7 +234,6 @@ fn eval(f: Activation, bias: f64, inputs: &[f64], weights: &[f64]) -> f64 {
 fn relu(x: f64) -> f64 {
     x.min(1.0).max(0.0)
 }
-
 
 #[allow(unused)]
 pub fn state_neuron(neuron: &Neuron) -> State {
