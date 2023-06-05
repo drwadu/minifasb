@@ -31,13 +31,13 @@ impl Lnn {
             _ => Weight::AnswerSetCounting,
         };
         let ovr =
-            unsafe { count(&mut w, wrt, std::iter::empty::<String>()).unwrap_unchecked() }.0 as f64;
+            unsafe { count(&mut w, wrt, std::iter::empty::<String>()).unwrap_unchecked() } as f64;
         self.0
             .clone()
             .values_mut()
             .filter(|n| n.f == Activation::Proposition)
             .for_each(|n| {
-                let c = unsafe { count(&mut w, wrt, [&n.repr].iter()).unwrap_unchecked() }.0 as f64
+                let c = unsafe { count(&mut w, wrt, [&n.repr].iter()).unwrap_unchecked() } as f64
                     / ovr;
                 self.update_state(n.repr.clone(), (c, c));
                 self.update_state(format!("~{}", n.repr), (1.0 - c, 1.0 - c))
@@ -51,8 +51,8 @@ impl Lnn {
             1.0
         } else {
             let ovr =
-                unsafe { count(w, wrt, std::iter::empty::<String>()).unwrap_unchecked() }.0 as f64;
-            unsafe { count(w, wrt, [&n.repr].iter()).unwrap_unchecked() }.0 as f64 / ovr
+                unsafe { count(w, wrt, std::iter::empty::<String>()).unwrap_unchecked() } as f64;
+            (unsafe { count(w, wrt, [&n.repr].iter()).unwrap_unchecked() }) as f64 / ovr
         };
 
         self.update_state(n.repr.clone(), (bound, bound))
@@ -71,8 +71,8 @@ impl Lnn {
             1.0
         } else {
             let ovr =
-                unsafe { count(w, wrt, std::iter::empty::<String>()).unwrap_unchecked() }.0 as f64;
-            unsafe { count(w, wrt, [&n.repr].iter()).unwrap_unchecked() }.0 as f64 / ovr
+                unsafe { count(w, wrt, std::iter::empty::<String>()).unwrap_unchecked() } as f64;
+            (unsafe { count(w, wrt, [&n.repr].iter()).unwrap_unchecked() }) as f64 / ovr
         };
 
         self.update_state(n.repr.clone(), (bound, bound));

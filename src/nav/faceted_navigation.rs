@@ -5,6 +5,9 @@ use std::collections::HashSet;
 
 use super::Navigator;
 
+#[cfg(feature = "verbose")]
+use std::time::Instant;
+
 /// TODO
 #[allow(unused)]
 pub fn bc(
@@ -178,6 +181,10 @@ impl BCCC for Consequences {
             Self::Brave => "brave",
             Self::Cautious => "cautious",
         };
+        #[cfg(feature = "verbose")]
+        eprintln!("{s} started");
+        #[cfg(feature = "verbose")]
+        let start = Instant::now();
         nav.ctl
             .configuration_mut()
             .map(|c| {
@@ -205,6 +212,9 @@ impl BCCC for Consequences {
                     .ok()
             })
             .ok()?;
+
+        #[cfg(feature = "verbose")]
+        eprintln!("{s} elapsed: {:?}", start.elapsed().as_secs());
 
         Some(xs)
     }

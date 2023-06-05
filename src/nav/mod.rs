@@ -11,6 +11,9 @@ use errors::Result;
 use clingo::{Control, SolverLiteral, Symbol};
 use std::collections::{HashMap, HashSet};
 
+#[cfg(feature = "verbose")]
+use std::time::Instant;
+
 /// Returns route as fasb string.
 #[allow(unused)]
 pub fn context(nav: &impl Essential) -> String {
@@ -90,7 +93,13 @@ impl Navigator {
 
         let lp = source.into();
         ctl.add("base", &[], &lp)?;
+        #[cfg(feature = "verbose")]
+        eprintln!("grounding started");
+        #[cfg(feature = "verbose")]
+        let start = Instant::now();
         ctl.ground(&[clingo::Part::new("base", vec![])?])?;
+        #[cfg(feature = "verbose")]
+        eprintln!("grounding elapsed: {:?}", start.elapsed().as_secs());
 
         let mut literals = HashMap::new();
         for atom in ctl.symbolic_atoms()?.iter()? {
