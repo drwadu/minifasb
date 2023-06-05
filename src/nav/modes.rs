@@ -281,11 +281,11 @@ impl Guide for Mode {
                     let cc = consequences(Consequences::Cautious, nav, &active)?;
                     let count = bc.to_hashset().difference(&cc.to_hashset()).count();
                     if count == 1 {
+                        #[cfg(feature = "verbose")]
+                        println!("early stoppage +");
                         return Some((sym.to_string(), *l));
                     }
                     if count <= curr {
-                        #[cfg(feature = "verbose")]
-                        println!("early stoppage +");
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
@@ -297,11 +297,11 @@ impl Guide for Mode {
                     let cc = consequences(Consequences::Cautious, nav, &active)?;
                     let count = bc.to_hashset().difference(&cc.to_hashset()).count();
                     if count == 1 {
+                        #[cfg(feature = "verbose")]
+                        println!("early stoppage -");
                         return Some((format!("~{sym}"), ln));
                     }
                     if count <= curr {
-                        #[cfg(feature = "verbose")]
-                        println!("early stoppage -");
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -325,11 +325,11 @@ impl Guide for Mode {
                         active.push(*l);
                         let count = answer_set_count(nav, &active, curr).ok()?;
                         if count == 1 {
+                            #[cfg(feature = "verbose")]
+                            println!("early stoppage +");
                             return Some((sym.to_string(), *l));
                         }
                         if count <= curr {
-                            #[cfg(feature = "verbose")]
-                            println!("early stoppage +");
                             curr = count;
                             f = Some((sym.to_string(), *l));
                         }
@@ -338,11 +338,11 @@ impl Guide for Mode {
                         let ln = l.negate();
                         let count_ = *c - count;
                         if count_ == 1 {
+                            #[cfg(feature = "verbose")]
+                            println!("early stoppage -");
                             return Some((format!("~{sym}"), ln));
                         }
                         if count_ <= curr {
-                            #[cfg(feature = "verbose")]
-                            println!("early stoppage -");
                             curr = count_;
                             f = Some((format!("~{sym}"), ln));
                         }
@@ -356,11 +356,11 @@ impl Guide for Mode {
                         active.push(*l);
                         let count = answer_set_count(nav, &active, curr).ok()?;
                         if count == 1 {
+                            #[cfg(feature = "verbose")]
+                            println!("early stoppage +");
                             return Some((sym.to_string(), *l));
                         }
                         if count <= curr {
-                            #[cfg(feature = "verbose")]
-                            println!("early stoppage +");
                             curr = count;
                             f = Some((sym.to_string(), *l));
                         }
@@ -370,11 +370,11 @@ impl Guide for Mode {
                         active.push(ln);
                         let count = answer_set_count(nav, &active, curr).ok()?;
                         if count == 1 {
+                            #[cfg(feature = "verbose")]
+                            println!("early stoppage -");
                             return Some((format!("~{sym}"), ln));
                         }
                         if count <= curr {
-                            #[cfg(feature = "verbose")]
-                            println!("early stoppage -");
                             curr = count;
                             f = Some((format!("~{sym}"), ln));
                         }
@@ -403,11 +403,11 @@ impl Guide for Mode {
                     let cc = consequences(Consequences::Cautious, nav, &active)?;
                     let count = bc.to_hashset().difference(&cc.to_hashset()).count();
                     if count == ub {
+                        #[cfg(feature = "verbose")]
+                        println!("early stoppage -");
                         return Some((format!("~{sym}"), ln));
                     }
                     if curr <= count {
-                        #[cfg(feature = "verbose")]
-                        println!("early stoppage -");
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -418,11 +418,11 @@ impl Guide for Mode {
                     let cc = consequences(Consequences::Cautious, nav, &active)?;
                     let count = bc.to_hashset().difference(&cc.to_hashset()).count();
                     if count == ub {
+                        #[cfg(feature = "verbose")]
+                        println!("early stoppage +");
                         return Some((sym.to_string(), *l));
                     }
                     if curr <= count {
-                        #[cfg(feature = "verbose")]
-                        println!("early stoppage +");
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
@@ -447,8 +447,6 @@ impl Guide for Mode {
                         active.push(ln);
                         let count = answer_set_count(nav, &active, curr).ok()?;
                         if curr <= count {
-                            #[cfg(feature = "verbose")]
-                            println!("early stoppage -");
                             curr = count;
                             f = Some((format!("~{sym}"), ln));
                         }
@@ -456,8 +454,6 @@ impl Guide for Mode {
 
                         let count_ = *c - count;
                         if curr <= count_ {
-                            #[cfg(feature = "verbose")]
-                            println!("early stoppage +");
                             curr = count_;
                             f = Some((sym.to_string(), *l));
                         }
@@ -473,8 +469,6 @@ impl Guide for Mode {
                         active.push(ln);
                         let count = answer_set_count(nav, &active, curr).ok()?;
                         if curr <= count {
-                            #[cfg(feature = "verbose")]
-                            println!("early stoppage -");
                             curr = count;
                             f = Some((format!("~{sym}"), ln));
                         }
@@ -483,8 +477,6 @@ impl Guide for Mode {
                         active.push(*l);
                         let count = answer_set_count(nav, &active, curr).ok()?;
                         if curr <= count {
-                            #[cfg(feature = "verbose")]
-                            println!("early stoppage +");
                             curr = count;
                             f = Some((sym.to_string(), *l));
                         }
