@@ -214,7 +214,7 @@ impl BCCC for Consequences {
             .ok()?;
 
         #[cfg(feature = "verbose")]
-        eprintln!("{s} elapsed: {:?}", start.elapsed().as_secs());
+        eprintln!("{s} elapsed: {:?}", start.elapsed());
 
         Some(xs)
     }
