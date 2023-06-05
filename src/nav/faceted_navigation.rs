@@ -181,9 +181,9 @@ impl BCCC for Consequences {
             Self::Brave => "brave",
             Self::Cautious => "cautious",
         };
-        #[cfg(feature = "verbose")]
+        #[cfg(feature = "ultra_verbose")]
         eprintln!("{s} started");
-        #[cfg(feature = "verbose")]
+        #[cfg(feature = "ultra_verbose")]
         let start = Instant::now();
         nav.ctl
             .configuration_mut()
@@ -213,7 +213,7 @@ impl BCCC for Consequences {
             })
             .ok()?;
 
-        #[cfg(feature = "verbose")]
+        #[cfg(feature = "ultra_verbose")]
         eprintln!("{s} elapsed: {:?}", start.elapsed());
 
         Some(xs)
