@@ -69,7 +69,7 @@ impl Guide for Mode {
                     let bc = consequences(Consequences::Brave, nav, &active)?;
                     let cc = consequences(Consequences::Cautious, nav, &active)?;
                     let count = bc.to_hashset().difference(&cc.to_hashset()).count();
-                    if count == 1 {
+                    if count == 0 {
                         return Some((sym.to_string(), *l));
                     }
                     if count <= curr {
@@ -83,7 +83,7 @@ impl Guide for Mode {
                     let bc = consequences(Consequences::Brave, nav, &active)?;
                     let cc = consequences(Consequences::Cautious, nav, &active)?;
                     let count = bc.to_hashset().difference(&cc.to_hashset()).count();
-                    if count == 1 {
+                    if count == 0 {
                         return Some((format!("~{sym}"), ln));
                     }
                     if count <= curr {
@@ -157,7 +157,7 @@ impl Guide for Mode {
             }
             Self::MinWeighted(Weight::FacetCounting) => {
                 let ub = fs.len() - 1;
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (1, None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
                 for sym in fs {
                     let l = unsafe { lits.get(&sym).unwrap_unchecked() };
 
@@ -169,7 +169,7 @@ impl Guide for Mode {
                     if count == ub {
                         return Some((format!("~{sym}"), ln));
                     }
-                    if curr <= count {
+                    if count >= curr {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -182,7 +182,8 @@ impl Guide for Mode {
                     if count == ub {
                         return Some((sym.to_string(), *l));
                     }
-                    if curr <= count {
+
+                    if count >= curr {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
@@ -192,7 +193,8 @@ impl Guide for Mode {
                 f
             }
             Self::MinWeighted(Weight::AnswerSetCounting) => {
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
+                let ub = usize::MAX - 1;
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (1, None);
 
                 if let Some(c) = split_on {
                     for sym in fs {
@@ -201,14 +203,20 @@ impl Guide for Mode {
 
                         active.push(ln);
                         let count = answer_set_count(nav, &active, curr).ok()?;
-                        if curr <= count {
+                        if count == ub {
+                            return Some((sym.to_string(), *l));
+                        }
+                        if count >= curr {
                             curr = count;
                             f = Some((format!("~{sym}"), ln));
                         }
                         active.pop();
 
                         let count_ = *c - count;
-                        if curr <= count_ {
+                        if count_ == ub {
+                            return Some((sym.to_string(), *l));
+                        }
+                        if count_ >= curr {
                             curr = count_;
                             f = Some((sym.to_string(), *l));
                         }
@@ -220,7 +228,10 @@ impl Guide for Mode {
 
                         active.push(ln);
                         let count = answer_set_count(nav, &active, curr).ok()?;
-                        if curr <= count {
+                        if count == ub {
+                            return Some((sym.to_string(), *l));
+                        }
+                        if count >= curr {
                             curr = count;
                             f = Some((format!("~{sym}"), ln));
                         }
@@ -228,7 +239,10 @@ impl Guide for Mode {
 
                         active.push(*l);
                         let count = answer_set_count(nav, &active, curr).ok()?;
-                        if curr <= count {
+                        if count == ub {
+                            return Some((sym.to_string(), *l));
+                        }
+                        if count >= curr {
                             curr = count;
                             f = Some((sym.to_string(), *l));
                         }
