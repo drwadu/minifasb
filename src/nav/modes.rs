@@ -320,6 +320,9 @@ impl Guide for Mode {
                         f = Some((format!("~{sym}"), ln));
                     }
                     active.pop();
+
+                    #[cfg(feature = "verbose")]
+                    eprint!(".");
                 }
 
                 f
@@ -358,6 +361,8 @@ impl Guide for Mode {
                             curr = count_;
                             f = Some((format!("~{sym}"), ln));
                         }
+                        #[cfg(feature = "verbose")]
+                        eprint!(".");
                     }
                 } else {
                     for sym in fs {
@@ -391,6 +396,8 @@ impl Guide for Mode {
                             f = Some((format!("~{sym}"), ln));
                         }
                         active.pop();
+                        #[cfg(feature = "verbose")]
+                        eprint!(".");
                     }
                 }
 
@@ -437,6 +444,8 @@ impl Guide for Mode {
                         f = Some((sym.to_string(), *l));
                     }
                     active.pop();
+                    #[cfg(feature = "verbose")]
+                    eprint!(".");
                 }
 
                 f
@@ -477,6 +486,8 @@ impl Guide for Mode {
                             curr = count_;
                             f = Some((sym.to_string(), *l));
                         }
+                        #[cfg(feature = "verbose")]
+                        eprint!(".");
                     }
                 } else {
                     for sym in fs {
@@ -511,6 +522,8 @@ impl Guide for Mode {
                             f = Some((sym.to_string(), *l));
                         }
                         active.pop();
+                        #[cfg(feature = "verbose")]
+                        eprint!(".");
                     }
                 }
 
@@ -522,7 +535,7 @@ impl Guide for Mode {
         };
 
         #[cfg(feature = "verbose")]
-        eprintln!("step elapsed: {:?}", start.elapsed());
+        eprintln!("\nstep elapsed: {:?}", start.elapsed());
         ret
     }
 }
