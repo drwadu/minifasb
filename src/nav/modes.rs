@@ -275,7 +275,7 @@ impl Guide for Mode {
         eprintln!("step started");
         #[cfg(feature = "verbose")]
         let start = Instant::now();
-        match self {
+        let ret = match self {
             Self::GoalOriented => fs.into_iter().next().and_then(|f| {
                 Some((f.clone(), *unsafe {
                     lits.get(&lex::parse(f).unwrap_unchecked())
@@ -294,7 +294,7 @@ impl Guide for Mode {
                     let bc = consequences(Consequences::Brave, nav, &active)?;
                     let cc = consequences(Consequences::Cautious, nav, &active)?;
                     let count = bc.to_hashset().difference(&cc.to_hashset()).count();
-                    if count == 1 {
+                    if count == 0 {
                         #[cfg(feature = "verbose")]
                         println!("early stoppage +");
                         return Some((sym.to_string(), *l));
@@ -310,7 +310,7 @@ impl Guide for Mode {
                     let bc = consequences(Consequences::Brave, nav, &active)?;
                     let cc = consequences(Consequences::Cautious, nav, &active)?;
                     let count = bc.to_hashset().difference(&cc.to_hashset()).count();
-                    if count == 1 {
+                    if count == 0 {
                         #[cfg(feature = "verbose")]
                         println!("early stoppage -");
                         return Some((format!("~{sym}"), ln));
@@ -321,8 +321,6 @@ impl Guide for Mode {
                     }
                     active.pop();
                 }
-                #[cfg(feature = "verbose")]
-                eprintln!("step elapsed: {:?}", start.elapsed());
 
                 f
             }
@@ -395,8 +393,6 @@ impl Guide for Mode {
                         active.pop();
                     }
                 }
-                #[cfg(feature = "verbose")]
-                eprintln!("step elapsed: {:?}", start.elapsed());
 
                 *split_on = Some(curr);
 
@@ -404,7 +400,7 @@ impl Guide for Mode {
             }
             Self::MinWeighted(Weight::FacetCounting) => {
                 let ub = fs.len() - 1;
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (1, None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
                 for sym in fs {
                     let l = unsafe {
                         lits.get(&lex::parse(sym).unwrap_unchecked())
@@ -421,7 +417,7 @@ impl Guide for Mode {
                         println!("early stoppage -");
                         return Some((format!("~{sym}"), ln));
                     }
-                    if curr <= count {
+                    if count >= curr {
                         curr = count;
                         f = Some((format!("~{sym}"), ln));
                     }
@@ -436,21 +432,21 @@ impl Guide for Mode {
                         println!("early stoppage +");
                         return Some((sym.to_string(), *l));
                     }
-                    if curr <= count {
+                    if count >= curr {
                         curr = count;
                         f = Some((sym.to_string(), *l));
                     }
                     active.pop();
                 }
-                #[cfg(feature = "verbose")]
-                eprintln!("step elapsed: {:?}", start.elapsed());
 
                 f
             }
             Self::MinWeighted(Weight::AnswerSetCounting) => {
+                let ub = usize::MAX - 1;
                 let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
 
                 if let Some(c) = split_on {
+                    let ub = *c - 1;
                     for sym in fs {
                         let l = unsafe {
                             lits.get(&lex::parse(sym).unwrap_unchecked())
@@ -460,14 +456,24 @@ impl Guide for Mode {
 
                         active.push(ln);
                         let count = answer_set_count(nav, &active, curr).ok()?;
-                        if curr <= count {
+                        if count == ub {
+                            #[cfg(feature = "verbose")]
+                            println!("early stoppage -");
+                            return Some((sym.to_string(), ln));
+                        }
+                        if count >= curr {
                             curr = count;
                             f = Some((format!("~{sym}"), ln));
                         }
                         active.pop();
 
                         let count_ = *c - count;
-                        if curr <= count_ {
+                        if count_ == ub {
+                            #[cfg(feature = "verbose")]
+                            println!("early stoppage +");
+                            return Some((sym.to_string(), *l));
+                        }
+                        if count_ >= curr {
                             curr = count_;
                             f = Some((sym.to_string(), *l));
                         }
@@ -482,7 +488,12 @@ impl Guide for Mode {
 
                         active.push(ln);
                         let count = answer_set_count(nav, &active, curr).ok()?;
-                        if curr <= count {
+                        if count == ub {
+                            #[cfg(feature = "verbose")]
+                            println!("early stoppage -");
+                            return Some((sym.to_string(), ln));
+                        }
+                        if count >= curr {
                             curr = count;
                             f = Some((format!("~{sym}"), ln));
                         }
@@ -490,7 +501,12 @@ impl Guide for Mode {
 
                         active.push(*l);
                         let count = answer_set_count(nav, &active, curr).ok()?;
-                        if curr <= count {
+                        if count == ub {
+                            #[cfg(feature = "verbose")]
+                            println!("early stoppage +");
+                            return Some((sym.to_string(), *l));
+                        }
+                        if count >= curr {
                             curr = count;
                             f = Some((sym.to_string(), *l));
                         }
@@ -498,14 +514,15 @@ impl Guide for Mode {
                     }
                 }
 
-                #[cfg(feature = "verbose")]
-                eprintln!("step elapsed: {:?}", start.elapsed());
-
                 *split_on = Some(curr);
 
                 f
             }
             _ => todo!(),
-        }
+        };
+
+        #[cfg(feature = "verbose")]
+        eprintln!("step elapsed: {:?}", start.elapsed());
+        ret
     }
 }
