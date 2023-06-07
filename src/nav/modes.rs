@@ -284,7 +284,15 @@ impl Guide for Mode {
             }),
             Self::MaxWeighted(Weight::FacetCounting) => {
                 let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) =
-                    (fs.len() - 1, None);
+                    (fs.len() - 1, unsafe {
+                        let s = fs.get_unchecked(0);
+                        Some((
+                            s.to_string(),
+                            *lits
+                                .get(&lex::parse(s).unwrap_unchecked())
+                                .unwrap_unchecked(),
+                        ))
+                    });
                 for sym in fs {
                     let l = unsafe {
                         lits.get(&lex::parse(sym).unwrap_unchecked())
@@ -329,7 +337,15 @@ impl Guide for Mode {
             }
             Self::MaxWeighted(Weight::AnswerSetCounting) => {
                 let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) =
-                    (usize::MAX - 1, None);
+                    (usize::MAX - 1, unsafe {
+                        let s = fs.get_unchecked(0);
+                        Some((
+                            s.to_string(),
+                            *lits
+                                .get(&lex::parse(s).unwrap_unchecked())
+                                .unwrap_unchecked(),
+                        ))
+                    });
 
                 if let Some(c) = split_on {
                     for sym in fs {
@@ -407,7 +423,15 @@ impl Guide for Mode {
             }
             Self::MinWeighted(Weight::FacetCounting) => {
                 let ub = fs.len() - 1;
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, unsafe {
+                    let s = fs.get_unchecked(0);
+                    Some((
+                        s.to_string(),
+                        *lits
+                            .get(&lex::parse(s).unwrap_unchecked())
+                            .unwrap_unchecked(),
+                    ))
+                });
                 for sym in fs {
                     let l = unsafe {
                         lits.get(&lex::parse(sym).unwrap_unchecked())
@@ -452,7 +476,15 @@ impl Guide for Mode {
             }
             Self::MinWeighted(Weight::AnswerSetCounting) => {
                 let ub = usize::MAX - 1;
-                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, None);
+                let (mut curr, mut f): (usize, Option<(String, SolverLiteral)>) = (0, unsafe {
+                    let s = fs.get_unchecked(0);
+                    Some((
+                        s.to_string(),
+                        *lits
+                            .get(&lex::parse(s).unwrap_unchecked())
+                            .unwrap_unchecked(),
+                    ))
+                });
 
                 if let Some(c) = split_on {
                     let ub = *c - 1;
